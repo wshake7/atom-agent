@@ -1,10 +1,17 @@
+import { existsSync } from "node:fs";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
+import { join } from "node:path";
 import { createPluginHost } from "atom-kernel";
 import { LOOP_EVENTS, plugin as loopPlugin } from "../../atom-loop/src/index.ts";
 import type { Llm, Loop } from "../../atom-loop/src/index.ts";
 import { expect, test } from "vite-plus/test";
 import { createLlmPlugin, plugin } from "../src/index.ts";
+
+const rootEnvPath = join(import.meta.dirname, "../../../.env");
+if (existsSync(rootEnvPath)) {
+  process.loadEnvFile(rootEnvPath);
+}
 
 const liveReady = Boolean(
   process.env.ATOM_LLM_API_KEY && process.env.ATOM_LLM_BASE_URL && process.env.ATOM_LLM_MODEL,
