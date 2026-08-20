@@ -1,0 +1,23 @@
+{
+  "name": "atom-agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ready": "vp check && vp run -r test && vp run -r build",
+    "lint:full": "vp check",
+    "format:full": "vp check --fix",
+    "dev:mock": "vp run backend-mock-template#start"
+  },
+  "devDependencies": {
+    "@commitlint/config-conventional": "catalog:",
+    "commitlint": "catalog:",
+    "cspell": "catalog:",
+    "lefthook": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@11.6.0"
+}

@@ -1,0 +1,57 @@
+# Maven
+target/
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 日志
+logs/
+# 例外:wiki 的 logs/ 目录(pro-workflow 的 maintenance log,需要随仓库提交)
+!.claude/wikis/**/logs/
+*.log
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# Docker
+deploy/.env
+deploy/log-stack-doris/.env
+deploy/log-stack-doris/vector/.env
+deploy/log-stack-victorialogs/.env
+deploy/log-stack-victorialogs/vector/.env
+deploy/qdrant/.env
+deploy/milvus/.env
+
+# 本地对象存储默认目录
+**/data/storage/
+
+# 临时
+*.swp
+*.swo
+*~
+
+node_modules/
+.nitro
+.playwright-mcp
+.understand-anything/intermediate/
+.understand-anything/diff-overlay.json
+.understand-anything/.trash-*/
+.understand-anything/tmp/
+__pycache__
+.output
+# Added by code-review-graph
+.code-review-graph/
+application-test.yml
+application-prod.yml
