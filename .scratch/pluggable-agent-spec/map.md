@@ -30,6 +30,7 @@ Label: `wayfinder:map`
 - [默认循环插件最小闭合集](./issues/10-default-loop-plugin-closed-set.md) — 三角 role + 推理块；分发/流式/Abort 在循环内；只消费 `llm`；内存会话；锁最小业务事件名。
 - [撰写 spec.md](./issues/11-write-spec.md) — 目的地已写成 [spec.md](./spec.md)。
 - [包布局与模块边界落地](./issues/12-package-layout.md) — `atom-kernel` / `atom-loop` / `atom-llm` / `atom-tools` / `atom-mcp` / `atom-cli`；插件只依赖内核，CLI 依赖内核与插件。
+- [宿主：无循环也能加载、卸载、发匿名事件](./issues/13-plugin-host.md) — `createPluginHost` 薄封装官方 Cordis；探测插件可装可卸，匿名总线可发布订阅，不装 `loop` 也算过。
 - 宿主运行时选用官方 Cordis（[ADR-0007](../../docs/adr/0007-cordis-as-host-runtime.md)）— `atom-kernel` 薄封装；不 vendor Harness 的 Cordis 分支。
 
 ## Not yet specified

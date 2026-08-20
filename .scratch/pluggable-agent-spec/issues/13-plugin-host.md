@@ -6,10 +6,18 @@
 
 **Blocked by:** 12 — 包布局与模块边界落地
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 经宿主加载面装上一颗探测插件后，Context 上能取到它贡献的服务（含未点名键）
-- [ ] 卸载后 effect 逆转，服务不再可取
-- [ ] 匿名事件总线可发布/订阅；内核自身不规定业务事件名
-- [ ] 不装 `loop` 的装配仍能完成上述验收；测试只走宿主加载面
-- [ ] 依赖官方 Cordis（cordiverse），不出现自研平行宿主、也不出现 Harness vendor 的 Cordis
+- [x] 经宿主加载面装上一颗探测插件后，Context 上能取到它贡献的服务（含未点名键）
+- [x] 卸载后 effect 逆转，服务不再可取
+- [x] 匿名事件总线可发布/订阅；内核自身不规定业务事件名
+- [x] 不装 `loop` 的装配仍能完成上述验收；测试只走宿主加载面
+- [x] 依赖官方 Cordis（cordiverse），不出现自研平行宿主、也不出现 Harness vendor 的 Cordis
+
+## Answer
+
+`atom-kernel` 用官方 `cordis@4.0.0-rc.8`（cordiverse）兑现四件套：`createPluginHost()` 薄封装 `Context.plugin` / `provide` / `get` / `emit` / `on` / fiber.dispose。探测插件经 `load` 贡献未点名键或官方槽后可从 `context.get` 取到；`unload` 逆转 effect；`events` 与插件 `ctx.emit` 同一条匿名总线。测试不装 `loop`。不依赖 `@deepseek-ai/cordis`。
+
+## Comments
+
+- 实现接缝：`PluginHost.load` / `context.get` / `events` / `LoadedPlugin.unload`。插件形态为 Cordis `apply` + `inject`，并再导出 `Service`。

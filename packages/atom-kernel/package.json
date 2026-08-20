@@ -15,6 +15,9 @@
     "test": "vp test",
     "check": "vp check"
   },
+  "dependencies": {
+    "cordis": "4.0.0-rc.8"
+  },
   "devDependencies": {
     "@types/node": "catalog:",
     "typescript": "catalog:",
