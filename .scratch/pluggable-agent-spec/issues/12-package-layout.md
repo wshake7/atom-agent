@@ -31,4 +31,4 @@
 | MCP 桥 | `atom-mcp` | `packages/atom-mcp` |
 | 流式 REPL / 默认装配 | `atom-cli` | `apps/atom-cli` |
 
-依赖方向：内核无工作区依赖；四颗插件只依赖 `atom-kernel`；`atom-cli` 依赖内核与四颗插件。公开面收在 `PluginHost`（`load` + `context` + `events`），类型骨架，未实现加载/回合/REPL。已删除 `packages/utils-template`。`apps/website-template` 仍是仓库模板遗留，不在本票 agent 包集合内。
+依赖方向：内核无工作区依赖；四颗插件只依赖 `atom-kernel`；`atom-cli` 依赖内核与四颗插件。公开面收在 `PluginHost`（`load` + `context` + `events`），类型骨架，未实现加载/回合/REPL。已删除 `packages/utils-template` 与仓库模板遗留的 `apps/website-template`。
