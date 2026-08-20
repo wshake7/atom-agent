@@ -16,6 +16,7 @@ interface Tool {
 
 export interface Tools {
   list(): readonly Tool[];
+  register(tool: Tool): () => void;
 }
 
 export function createTools(options: ToolsPluginOptions = {}): Tools {
@@ -106,7 +107,18 @@ export function createTools(options: ToolsPluginOptions = {}): Tools {
       },
     },
   ];
-  return { list: () => tools };
+  return {
+    list: () => tools,
+    register(tool) {
+      tools.push(tool);
+      return () => {
+        const index = tools.indexOf(tool);
+        if (index >= 0) {
+          tools.splice(index, 1);
+        }
+      };
+    },
+  };
 }
 
 function objectSchema(

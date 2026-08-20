@@ -16,6 +16,7 @@
     "check": "vp check"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "catalog:",
     "atom-kernel": "workspace:*"
   },
   "devDependencies": {
