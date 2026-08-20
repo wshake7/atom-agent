@@ -36,6 +36,7 @@ Label: `wayfinder:map`
 - [流式 REPL：人能打完一轮并看见流式输出](./issues/16-streaming-repl.md) — `runRepl` 只装配宿主并把 stdin 交给 `loop`，屏幕上的流式与工具起止来自总线最小事件集；假 `llm` 验收，无差分 TUI。
 - [默认工具包：读改仓库、跑命令、搜索、问答](./issues/17-default-tools.md) — `atom-tools` 占 `tools` 槽，一整包 `read`/`write`/`edit`/`bash`/`rg`/`ASK`，均可关；`rg` 用随包 `@vscode/ripgrep` 覆盖搜索与路径枚举；假 `llm` 经宿主加载面验收工作树/进程副作用与问答，无权限弹窗、无默认沙箱。
 - [MCP 工具桥：登记后的工具能被循环调用](./issues/18-mcp-tools-bridge.md) — `atom-mcp` 默认可关，只把 MCP server 的 tools 登记进 `tools` 槽；假 `llm` 经宿主加载面调用并拿到 `toolResult`；不做 resources / prompts / sampling，不依赖默认工具包。
+- [v0 默认装配：一条命令起真实 CLI](./issues/19-v0-default-assembly.md) — `atom-cli` 写死默认插件列表启动宿主 + 真 `llm` + 默认工具包 + 流式 REPL；MCP 桥 `--mcp` 可开、默认关；此票退出即 v0 产品闭环。
 - 宿主运行时选用官方 Cordis（[ADR-0007](../../docs/adr/0007-cordis-as-host-runtime.md)）— `atom-kernel` 薄封装；不 vendor Harness 的 Cordis 分支。
 
 ## Not yet specified

@@ -14,3 +14,7 @@ alias i := install
 # 全仓清理：node_modules / dist / .turbo / .vite / coverage / target 等
 clean:
     node scripts/clean.mjs
+
+# 一条命令启动默认装配（流式 REPL）
+atom *args:
+    vp run atom-cli#start -- {{args}}

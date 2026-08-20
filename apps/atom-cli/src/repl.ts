@@ -4,10 +4,57 @@ import type { ResolvedPluginModule } from "atom-kernel";
 import { LOOP_EVENTS } from "atom-loop";
 import type { AssistantDeltaPayload, Loop, ToolCallPayload, ToolEndPayload } from "atom-loop";
 
+export interface LineReader {
+  readonly readLine: () => Promise<string | undefined>;
+  readonly close: () => void;
+}
+
+export function createLineReader(stdin: NodeJS.ReadableStream): LineReader {
+  const rl = createInterface({ input: stdin });
+  const pending: string[] = [];
+  const waiters: ((line: string | undefined) => void)[] = [];
+  let closed = false;
+
+  rl.on("line", (line) => {
+    const waiter = waiters.shift();
+    if (waiter) {
+      waiter(line);
+      return;
+    }
+    pending.push(line);
+  });
+  rl.once("close", () => {
+    closed = true;
+    while (waiters.length > 0) {
+      waiters.shift()?.(undefined);
+    }
+  });
+
+  const readLine = (): Promise<string | undefined> => {
+    if (pending.length > 0) {
+      return Promise.resolve(pending.shift());
+    }
+    if (closed) {
+      return Promise.resolve(undefined);
+    }
+    return new Promise((resolve) => {
+      waiters.push(resolve);
+    });
+  };
+
+  return {
+    readLine,
+    close: () => {
+      rl.close();
+    },
+  };
+}
+
 export async function runRepl(options: {
   readonly plugins: readonly ResolvedPluginModule[];
   readonly stdin: NodeJS.ReadableStream;
   readonly stdout: { write(chunk: string): unknown };
+  readonly readLine?: () => Promise<string | undefined>;
 }): Promise<void> {
   const host = createPluginHost();
   for (const module of options.plugins) {
@@ -36,9 +83,14 @@ export async function runRepl(options: {
     options.stdout.write("\n");
   });
 
-  const rl = createInterface({ input: options.stdin });
+  const owned = options.readLine ? undefined : createLineReader(options.stdin);
+  const readLine = options.readLine ?? (() => owned?.readLine() ?? Promise.resolve(undefined));
   try {
-    for await (const line of rl) {
+    while (true) {
+      const line = await readLine();
+      if (line === undefined) {
+        return;
+      }
       const text = line.trim();
       if (text === "") {
         continue;
@@ -46,6 +98,6 @@ export async function runRepl(options: {
       await loop.prompt(text);
     }
   } finally {
-    rl.close();
+    owned?.close();
   }
 }
