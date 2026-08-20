@@ -124,6 +124,50 @@ test("默认循环外也能从 llm 槽流式读到文本块", async () => {
   }
 });
 
+function sseToolCallDelta(delta: unknown): string {
+  return `data: ${JSON.stringify({ choices: [{ delta: { tool_calls: [delta] } }] })}\n\n`;
+}
+
+test("后续帧用空字符串 name 时仍保留已解析的工具名", async () => {
+  const server = await serveChatCompletions((res) => {
+    res.write(
+      sseToolCallDelta({
+        index: 0,
+        id: "call_1",
+        type: "function",
+        function: { name: "write", arguments: "" },
+      }),
+    );
+    res.write(sseToolCallDelta({ index: 0, function: { name: "", arguments: '{"path":"' } }));
+    res.write(sseToolCallDelta({ index: 0, function: { name: "", arguments: 'test.md"}' } }));
+    res.write("data: [DONE]\n\n");
+  });
+  try {
+    const { llm } = await loadLlm({
+      apiKey: "test-key",
+      baseUrl: server.origin,
+      model: "dummy",
+    });
+    const chunks: unknown[] = [];
+    for await (const chunk of llm.stream({
+      messages: [{ role: "user", content: "写文件" }],
+      tools: [{ name: "write" }],
+    })) {
+      chunks.push(chunk);
+    }
+    expect(chunks).toEqual([
+      {
+        type: "toolCall",
+        id: "call_1",
+        name: "write",
+        arguments: { path: "test.md" },
+      },
+    ]);
+  } finally {
+    await server.close();
+  }
+});
+
 function deferred() {
   let resolve!: () => void;
   const promise = new Promise<void>((res) => {

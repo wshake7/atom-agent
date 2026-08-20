@@ -96,6 +96,9 @@ export function createLlm(options: LlmPluginOptions = {}): Llm {
       }
       const ordered = [...toolCalls.entries()].sort((left, right) => left[0] - right[0]);
       for (const [, call] of ordered) {
+        if (call.name.length === 0) {
+          continue;
+        }
         yield {
           type: "toolCall",
           id: call.id,
@@ -234,9 +237,12 @@ function accumulateToolCall(
 ) {
   const index = delta.index ?? 0;
   const current = toolCalls.get(index) ?? { id: "", name: "", arguments: "" };
+  const id = delta.id && delta.id.length > 0 ? delta.id : current.id;
+  const name =
+    delta.function?.name && delta.function.name.length > 0 ? delta.function.name : current.name;
   toolCalls.set(index, {
-    id: delta.id ?? current.id,
-    name: delta.function?.name ?? current.name,
+    id,
+    name,
     arguments: `${current.arguments}${delta.function?.arguments ?? ""}`,
   });
 }
