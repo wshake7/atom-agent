@@ -55,6 +55,7 @@ export async function runRepl(options: {
   readonly stdin: NodeJS.ReadableStream;
   readonly stdout: { write(chunk: string): unknown };
   readonly readLine?: () => Promise<string | undefined>;
+  readonly prompt?: string;
 }): Promise<void> {
   const host = createPluginHost();
   for (const module of options.plugins) {
@@ -87,6 +88,9 @@ export async function runRepl(options: {
   const readLine = options.readLine ?? (() => owned?.readLine() ?? Promise.resolve(undefined));
   try {
     while (true) {
+      if (options.prompt) {
+        options.stdout.write(options.prompt);
+      }
       const line = await readLine();
       if (line === undefined) {
         return;

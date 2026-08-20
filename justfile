@@ -15,6 +15,6 @@ alias i := install
 clean:
     node scripts/clean.mjs
 
-# 一条命令启动默认装配（流式 REPL）
+# 一条命令启动默认装配（流式 REPL）。不要用 vp run：它不转发键盘。
 atom *args:
-    vp run atom-cli#start -- {{args}}
+    node apps/atom-cli/src/cli.ts {{args}}

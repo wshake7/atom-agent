@@ -8,7 +8,7 @@
     "lint:full": "vp check",
     "format:full": "vp check --fix",
     "dev:mock": "vp run backend-mock-template#start",
-    "atom": "vp run atom-cli#start"
+    "atom": "node apps/atom-cli/src/cli.ts"
   },
   "devDependencies": {
     "@commitlint/config-conventional": "catalog:",

@@ -11,6 +11,12 @@ export async function main(
   if (existsSync(".env")) {
     process.loadEnvFile();
   }
+  const interactive = stdin === process.stdin && process.stdin.isTTY === true;
+  if (stdin === process.stdin && !interactive) {
+    process.stderr.write(
+      "stdin 不是交互终端。`vp run` 不会把键盘交给 REPL，进程会因 EOF 立刻退出。\n请在仓库根目录运行：just atom   或   node apps/atom-cli/src/cli.ts\n",
+    );
+  }
   const flags = parseArgv(argv);
   const lines = createLineReader(stdin);
   try {
@@ -29,6 +35,7 @@ export async function main(
       stdin,
       stdout,
       readLine: () => lines.readLine(),
+      prompt: interactive ? "> " : undefined,
     });
   } finally {
     lines.close();
