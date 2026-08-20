@@ -12,9 +12,9 @@ Status: ready-for-agent
 
 ## Solution
 
-用 TypeScript 在本 monorepo 绿场实现一颗进程内**内核**（插件宿主，不是回合循环），外加可整颗替换的默认**循环插件**、接到 `llm` 槽的真实模型端口、流式 REPL、默认可关的 coding **工具**包，以及只把 MCP server 的 tools 登记进 `tools` 槽的工具桥。MCP 桥退出即 v0 产品闭环。
+用 TypeScript 在本 monorepo 绿场实现一颗进程内**内核**（插件宿主，不是回合循环）。宿主运行时选用官方 Cordis，由 `atom-kernel` 薄封装兑现四件套；外加可整颗替换的默认**循环插件**、接到 `llm` 槽的真实模型端口、流式 REPL、默认可关的 coding **工具**包，以及只把 MCP server 的 tools 登记进 `tools` 槽的工具桥。MCP 桥退出即 v0 产品闭环。
 
-只偷 pi / DeepSeek Harness / AgentScope 2.0 的原则，不 fork。企业能力不预埋进核，靠已锁宿主加**槽**长出来；本规格不设计那些后续形态。
+只偷 pi / DeepSeek Harness / AgentScope 2.0 的原则，不 fork。不 vendor Harness 的 Cordis 分支。企业能力不预埋进核，靠已锁宿主加**槽**长出来；本规格不设计那些后续形态。
 
 ## User Stories
 
@@ -80,9 +80,9 @@ Status: ready-for-agent
 ## Implementation Decisions
 
 - 语言与落点：TypeScript 绿场，落在本 monorepo。沿用现有 `apps/*` 与 `packages/*` 工作区惯例。包如何切（内核 / CLI / 内置插件是否分 package）本规格不锁；但内核必须能在没有循环插件、没有 CLI 的情况下被装配和验收。
-- 内核（ADR-0001）：进程内插件宿主。闭合集只有四件——服务注册、依赖注入、生命周期（加载 / 卸载 / 可逆 effect）、事件总线原语（发布 / 订阅，不含业务事件名）。不是回合循环。发现与组成、模型、工具、会话与持久化不进核。无第五件套。
+- 内核（ADR-0001、ADR-0007）：进程内插件宿主。闭合集只有四件——服务注册、依赖注入、生命周期（加载 / 卸载 / 可逆 effect）、事件总线原语（发布 / 订阅，不含业务事件名）。四件套由官方 Cordis 兑现，`atom-kernel` 薄封装加载面（已解析同进程模块、官方槽、匿名事件），不自研第二套 DI/生命周期/事件，不 vendor `@deepseek-ai/cordis`。插件形态对齐 Cordis：`apply` / `inject` / `Service` / 可逆 effect。不是回合循环。发现与组成、模型、工具、会话与持久化不进核。无第五件套。
 - 循环插件（ADR-0006）：占 `loop` 槽，可整颗替换。消费 `llm` 与 `tools`，不内置提供商。「删掉则无法完成模型 ↔ 工具回合」用在这颗插件上，不用在内核上。
-- 插件契约（ADR-0002）：插件同构，向 Context 贡献服务，不分 PluginType。v0 官方槽仅 `loop`、`tools`、`llm`。未点名键仍可贡献。官方槽语义不可改，新能力只加新槽。
+- 插件契约（ADR-0002）：插件同构，向 Context 贡献服务，不分 PluginType；实现上即 Cordis 插件。v0 官方槽仅 `loop`、`tools`、`llm`。未点名键仍可贡献。官方槽语义不可改，新能力只加新槽。
 - 加载面：宿主只吃已解析的同进程模块加依赖。目录 / npm / preset 发现不进本契约。v0 的 CLI 可以用写死的默认插件列表启动；那是产品装配，不是内核发现逻辑。
 - 隔离：能力级。模块同进程加载。沙箱若出现，是某槽提供方，且不是 v0 官方槽。
 - 内置分发：默认循环、默认工具包、默认 `llm` 适配器、MCP 桥都是插件，与第三方同一加载面，可关可换。
@@ -153,7 +153,7 @@ Status: ready-for-agent
 - DeepSeek Harness → 什么必须是插件：[调研笔记](./research/deepseek-harness-plugin-model.md) · [DeepSeek Harness 插件模型](./issues/02-deepseek-harness-plugin-model.md)
 - AgentScope 2.0 → 企业能力如何分层：[调研笔记](./research/agentscope-enterprise-layers.md) · [AgentScope 2.0 企业能力分层](./issues/03-agentscope-enterprise-layers.md)
 
-内核对齐 Harness「宿主可换循环」，不把 pi 的循环叫做内核。pi 的「小」落在默认循环插件上。AgentScope 的企业能力不预埋进核，靠加槽长出来。
+内核对齐 Harness「宿主可换循环」，运行时选用与 Harness 相同的官方 Cordis，不把 pi 的循环叫做内核，也不 fork Harness 产品树。pi 的「小」落在默认循环插件上。AgentScope 的企业能力不预埋进核，靠加槽长出来。
 
 ADR：
 
@@ -163,6 +163,7 @@ ADR：
 - [0004 企业能力靠加槽长出来，不在内核预埋接缝](../../docs/adr/0004-enterprise-is-later-phases-not-kernel-seams.md)
 - [0005 到 v0 产品闭环共六段，其后加槽不排序](../../docs/adr/0005-roadmap-six-phases-to-v0.md)
 - [0006 默认循环插件：三角消息 + 推理块 + 回合机械装置](../../docs/adr/0006-default-loop-plugin-closed-set.md)
+- [0007 宿主运行时选用官方 Cordis](../../docs/adr/0007-cordis-as-host-runtime.md)
 
 已关决策票：[内核最小闭合集](./issues/04-kernel-minimal-closed-set.md)、[插件契约：可替换面](./issues/05-plugin-contract-replaceable-surface.md)、[v0 Coding CLI 产品边界](./issues/06-v0-coding-cli-product-boundary.md)、[企业能力阶段切分与内核接缝](./issues/07-enterprise-stage-cuts-and-seams.md)、[路线图阶段与退出条件](./issues/08-roadmap-phases-and-exit-criteria.md)、[默认循环插件最小闭合集](./issues/10-default-loop-plugin-closed-set.md)。
 
