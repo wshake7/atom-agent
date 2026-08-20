@@ -29,10 +29,10 @@ Label: `wayfinder:map`
 - [规格文档形态](./issues/09-spec-document-shape.md) — 目的地是 `spec.md`；ADR 只链；术语只在 CONTEXT；路线图为一章；调研只链不贴。
 - [默认循环插件最小闭合集](./issues/10-default-loop-plugin-closed-set.md) — 三角 role + 推理块；分发/流式/Abort 在循环内；只消费 `llm`；内存会话；锁最小业务事件名。
 - [撰写 spec.md](./issues/11-write-spec.md) — 目的地已写成 [spec.md](./spec.md)。
+- [包布局与模块边界落地](./issues/12-package-layout.md) — `atom-kernel` / `atom-loop` / `atom-llm` / `atom-tools` / `atom-mcp` / `atom-cli`；插件只依赖内核，CLI 依赖内核与插件。
 
 ## Not yet specified
 
-- 包布局（内核 / CLI / 内置插件如何切 package）
 - 模型供应商抽象（`llm` 槽已点名；OpenAI 兼容面、多提供商未锁）
 - 权限与沙箱（后续阶段才加槽或提供方；本图不点名）
 - 上下文压缩与记忆挂在循环插件上还是独立插件

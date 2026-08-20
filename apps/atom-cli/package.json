@@ -1,0 +1,28 @@
+{
+  "name": "atom-cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "流式 REPL 与默认装配",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "atom-kernel": "workspace:*",
+    "atom-llm": "workspace:*",
+    "atom-loop": "workspace:*",
+    "atom-mcp": "workspace:*",
+    "atom-tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

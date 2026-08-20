@@ -6,9 +6,29 @@
 
 **Blocked by:** 无 — 可立即开始
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 工作区里能辨认出内核、四颗默认插件（循环 / `llm` / 工具包 / MCP 桥）、一个 CLI app，后续票有固定落点
-- [ ] 内核不依赖任何插件或 CLI；插件只依赖内核；CLI 依赖内核与插件，反向依赖不存在
-- [ ] 公开面可从模块边界描述为：加载已解析同进程模块、Context 取槽、匿名事件总线；没有第二套平行 API
-- [ ] 骨架能通过类型检查；有可运行的空测试。不实现插件加载、回合循环或 REPL
+**Constraints:**
+
+- 工作区包名一律 `atom-` 前缀（`atom-kernel` / `atom-loop` / `atom-llm` / `atom-tools` / `atom-mcp` / `atom-cli`）
+- 删除示例包 `packages/utils-template`
+
+- [x] 工作区里能辨认出内核、四颗默认插件（循环 / `llm` / 工具包 / MCP 桥）、一个 CLI app，后续票有固定落点
+- [x] 内核不依赖任何插件或 CLI；插件只依赖内核；CLI 依赖内核与插件，反向依赖不存在
+- [x] 公开面可从模块边界描述为：加载已解析同进程模块、Context 取槽、匿名事件总线；没有第二套平行 API
+- [x] 骨架能通过类型检查；有可运行的空测试。不实现插件加载、回合循环或 REPL
+
+## Answer
+
+包名一律 `atom-` 前缀，落点如下：
+
+| 角色 | 包名 | 路径 |
+| --- | --- | --- |
+| 内核 | `atom-kernel` | `packages/atom-kernel` |
+| 默认循环插件 | `atom-loop` | `packages/atom-loop` |
+| 默认 `llm` 适配器 | `atom-llm` | `packages/atom-llm` |
+| 默认工具包 | `atom-tools` | `packages/atom-tools` |
+| MCP 桥 | `atom-mcp` | `packages/atom-mcp` |
+| 流式 REPL / 默认装配 | `atom-cli` | `apps/atom-cli` |
+
+依赖方向：内核无工作区依赖；四颗插件只依赖 `atom-kernel`；`atom-cli` 依赖内核与四颗插件。公开面收在 `PluginHost`（`load` + `context` + `events`），类型骨架，未实现加载/回合/REPL。已删除 `packages/utils-template`。`apps/website-template` 仍是仓库模板遗留，不在本票 agent 包集合内。
