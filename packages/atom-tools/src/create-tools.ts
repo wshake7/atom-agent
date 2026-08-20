@@ -1,8 +1,6 @@
 import { spawn } from "node:child_process";
-import { createReadStream } from "node:fs";
-import { glob, mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative } from "node:path";
-import { createInterface } from "node:readline";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join } from "node:path";
 
 export interface ToolsPluginOptions {
   readonly cwd?: string;
@@ -71,21 +69,28 @@ export function createTools(options: ToolsPluginOptions = {}): Tools {
       },
     },
     {
-      name: "grep",
-      description: "按正则搜索工作树文件内容",
-      parameters: objectSchema({ pattern: { type: "string" }, path: { type: "string" } }, [
-        "pattern",
-      ]),
-      execute(args) {
-        return grepTool(cwd, stringField(args, "pattern"), optionalString(args, "path"));
-      },
-    },
-    {
-      name: "glob",
-      description: "按路径模式枚举工作树文件",
-      parameters: objectSchema({ pattern: { type: "string" } }, ["pattern"]),
-      execute(args) {
-        return globTool(cwd, stringField(args, "pattern"));
+      name: "rg",
+      description: "用 ripgrep 搜索工作树内容；files 为 true 时按 glob 枚举文件",
+      parameters: objectSchema(
+        {
+          pattern: { type: "string" },
+          path: { type: "string" },
+          glob: { type: "string" },
+          files: { type: "boolean" },
+        },
+        [],
+      ),
+      execute(args, signal) {
+        return rgTool(
+          cwd,
+          {
+            pattern: optionalString(args, "pattern"),
+            path: optionalString(args, "path"),
+            glob: optionalString(args, "glob"),
+            files: optionalBoolean(args, "files"),
+          },
+          signal,
+        );
       },
     },
     {
@@ -104,7 +109,10 @@ export function createTools(options: ToolsPluginOptions = {}): Tools {
   return { list: () => tools };
 }
 
-function objectSchema(properties: Record<string, { type: "string" }>, required: string[]): unknown {
+function objectSchema(
+  properties: Record<string, { type: "string" | "boolean" }>,
+  required: string[],
+): unknown {
   return { type: "object", properties, required };
 }
 
@@ -130,6 +138,17 @@ function optionalString(args: unknown, key: string): string | undefined {
   }
   if (typeof value !== "string") {
     throw new Error(`${key} 必须是字符串`);
+  }
+  return value;
+}
+
+function optionalBoolean(args: unknown, key: string): boolean {
+  const value = asRecord(args)[key];
+  if (value === undefined) {
+    return false;
+  }
+  if (typeof value !== "boolean") {
+    throw new Error(`${key} 必须是布尔`);
   }
   return value;
 }
@@ -189,43 +208,71 @@ function bashTool(cwd: string, command: string, signal?: AbortSignal): Promise<s
   });
 }
 
-async function grepTool(cwd: string, pattern: string, path?: string): Promise<string> {
-  const regex = new RegExp(pattern);
-  const start = path ? resolvePath(cwd, path) : cwd;
-  const hits: string[] = [];
-  for await (const file of glob("**/*", { cwd: start })) {
-    const full = join(start, file);
-    const rel = relative(cwd, full) || file;
-    await collectMatches(full, rel, regex, hits);
-  }
-  return hits.join("\n") || "无匹配";
+let rgPathPromise: Promise<string> | undefined;
+
+function resolveRgPath(): Promise<string> {
+  rgPathPromise ??= import("@vscode/ripgrep").then((module) => module.rgPath);
+  return rgPathPromise;
 }
 
-async function collectMatches(
-  full: string,
-  rel: string,
-  regex: RegExp,
-  hits: string[],
-): Promise<void> {
-  try {
-    const stream = createReadStream(full, { encoding: "utf8" });
-    const lines = createInterface({ input: stream });
-    let lineNumber = 0;
-    for await (const line of lines) {
-      lineNumber += 1;
-      if (regex.test(line)) {
-        hits.push(`${rel}:${lineNumber}:${line}`);
+async function rgTool(
+  cwd: string,
+  input: {
+    readonly pattern?: string;
+    readonly path?: string;
+    readonly glob?: string;
+    readonly files: boolean;
+  },
+  signal?: AbortSignal,
+): Promise<string> {
+  if (!input.files && !input.pattern) {
+    throw new Error("缺少 pattern");
+  }
+  const args = ["--no-config", "--color", "never"];
+  if (input.files) {
+    args.push("--files");
+  } else if (input.pattern) {
+    args.push("--line-number", "--", input.pattern);
+  }
+  if (input.glob) {
+    args.push("-g", input.glob);
+  }
+  args.push(input.path ?? ".");
+  const rgPath = await resolveRgPath();
+  return new Promise((resolve, reject) => {
+    const child = spawn(rgPath, args, {
+      cwd,
+      env: process.env,
+      signal,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk;
+    });
+    child.on("error", (error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") {
+        reject(new Error("未找到打包的 ripgrep"));
+        return;
       }
-    }
-  } catch {
-    /* 跳过不可读文件 */
-  }
-}
-
-async function globTool(cwd: string, pattern: string): Promise<string> {
-  const files: string[] = [];
-  for await (const file of glob(pattern, { cwd })) {
-    files.push(file);
-  }
-  return files.join("\n") || "无匹配";
+      reject(error);
+    });
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve(stdout.trimEnd() || "(无输出)");
+        return;
+      }
+      if (code === 1) {
+        resolve(stdout.trimEnd() || "无匹配");
+        return;
+      }
+      reject(new Error(stderr.trimEnd() || `rg 退出 ${code}`));
+    });
+  });
 }

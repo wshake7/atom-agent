@@ -66,7 +66,7 @@ Status: ready-for-agent
 46. As an `llm` 提供方作者, I want 提供商方言私有在适配器里, so that 换一家模型不必改官方槽语义
 47. As a REPL 维护者, I want 只订阅循环打到总线的最小事件集并写到终端, so that UI 不是第二套回合状态机
 48. As a REPL 维护者, I want 人的输入变成 `user` 消息并交给 `loop`, so that 界面不直接打模型、不直接调工具
-49. As a 默认工具包维护者, I want `read` / `write` / `edit` / `bash` / `grep` / `glob` / ASK 作为一整包交付, so that 路线图不按每把工具拆阶段
+49. As a 默认工具包维护者, I want `read` / `write` / `edit` / `bash` / `rg` / ASK 作为一整包交付, so that 路线图不按每把工具拆阶段
 50. As a 默认工具包维护者, I want 工具效果发生在当前工作树和本机进程, so that 作者能用 git 看见改动、用终端看见命令输出
 51. As an MCP 桥维护者, I want 只把 server 的 tools 登记进 `tools` 槽, so that 循环调用它们的方式和内置工具相同
 52. As an MCP 桥维护者, I want 未实现的 MCP 面保持关闭, so that resources / prompts / sampling 不会冒充 v0 能力
@@ -92,7 +92,7 @@ Status: ready-for-agent
 - 默认循环不包含：压缩、记忆、图片一等化、并行工具批、持久化、CLI。
 - `llm` 槽：必须可流式、可 Abort。提供商方言不进入内核或官方槽语义；第一颗内置适配器只要能完成一次真实模型调用即可，不做成多提供商市场。
 - v0 界面（ADR-0003）：流式 REPL。人输入 → `loop`；REPL 订阅总线最小事件集并写到终端。无差分 TUI。
-- 默认 `tools` 插件（均可关，一整包）：`read` / `write` / `edit` / `bash` / `grep` / `glob` / ASK。ASK 是问答工具（模型提问，人在 REPL 答复成 `toolResult`），不拦截写文件或 bash。
+- 默认 `tools` 插件（均可关，一整包）：`read` / `write` / `edit` / `bash` / `rg` / ASK。`rg` 覆盖按内容搜索与按路径枚举。ASK 是问答工具（模型提问，人在 REPL 答复成 `toolResult`），不拦截写文件或 bash。
 - 权限：v0 不管。无弹窗、无默认沙箱。
 - MCP：默认可关的工具桥，只把某 server 的 tools 登记进 `tools`。不做 resources / prompts / sampling。登记后的工具必须能被循环调用。
 - 接缝（ADR-0004）：就是已锁宿主加官方槽可加不可改。不预点名 `session` / `sandbox` / `telemetry` 等槽。可嵌入 Runtime、会话持久、可观测、权限/沙箱、多智能体编排标为后续阶段，到点再做。

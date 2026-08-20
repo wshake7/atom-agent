@@ -72,8 +72,13 @@ test("假 llm 驱动下循环能调用默认工具，效果落在工作树和本
           name: "bash",
           arguments: { command: "printf hi-from-bash" },
         },
-        { type: "toolCall", id: "g", name: "grep", arguments: { pattern: "beta", path: "src" } },
-        { type: "toolCall", id: "o", name: "glob", arguments: { pattern: "src/*.txt" } },
+        { type: "toolCall", id: "g", name: "rg", arguments: { pattern: "beta", path: "src" } },
+        {
+          type: "toolCall",
+          id: "o",
+          name: "rg",
+          arguments: { files: true, glob: "src/*.txt" },
+        },
       ],
       () => [{ type: "text", text: "好了" }],
     ]);
@@ -85,10 +90,38 @@ test("假 llm 驱动下循环能调用默认工具，效果落在工作树和本
     const results = loop.messages.filter((message) => message.role === "toolResult");
     expect(results.find((message) => message.name === "read")?.content).toContain("alpha");
     expect(results.find((message) => message.name === "bash")?.content).toContain("hi-from-bash");
-    expect(results.find((message) => message.name === "grep")?.content).toContain("note.txt");
-    expect(results.find((message) => message.name === "glob")?.content).toContain("src/note.txt");
+    const searches = results.filter((message) => message.name === "rg");
+    expect(searches[0]?.content).toContain("note.txt");
+    expect(searches[1]?.content).toContain("src/note.txt");
     expect(results.every((message) => message.isError !== true)).toBe(true);
   } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rg 使用随包二进制，不依赖系统 PATH 上的 rg", async () => {
+  const root = await mkdtemp(join(tmpdir(), "atom-tools-rg-"));
+  const originalPath = process.env.PATH;
+  process.env.PATH = join(root, "empty-path");
+  try {
+    await writeFile(join(root, "hit.txt"), "needle-in-packaged-rg\n");
+    const llm = fakeLlm([
+      () => [
+        { type: "toolCall", id: "g", name: "rg", arguments: { pattern: "needle-in-packaged-rg" } },
+      ],
+      () => [{ type: "text", text: "好了" }],
+    ]);
+    const { loop } = await loadRound(llm, createToolsPlugin({ cwd: root }));
+    await loop.prompt("搜");
+    expect(loop.messages.find((message) => message.role === "toolResult")).toEqual({
+      role: "toolResult",
+      toolCallId: "g",
+      name: "rg",
+      content: expect.stringContaining("needle-in-packaged-rg"),
+      isError: false,
+    });
+  } finally {
+    process.env.PATH = originalPath;
     await rm(root, { recursive: true, force: true });
   }
 });
@@ -140,7 +173,7 @@ test("ASK 能提问并收下答复作为 toolResult，且不拦截 write 或 bas
 });
 
 test("整包可关：不装或卸载后循环看不到这些工具", async () => {
-  const names = ["read", "write", "edit", "bash", "grep", "glob", "ASK"];
+  const names = ["read", "write", "edit", "bash", "rg", "ASK"];
   const hostWithTools = createPluginHost();
   const loaded = await hostWithTools.load(createToolsPlugin());
   const listed = hostWithTools.context.get("tools") as { list(): { name: string }[] } | undefined;
