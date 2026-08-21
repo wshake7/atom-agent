@@ -45,6 +45,20 @@ async function loadRound(llm: Llm, toolsModule: ReturnType<typeof createToolsPlu
   return { host, loop };
 }
 
+test("默认工具包不登记 skill", async () => {
+  const host = createPluginHost();
+  await host.load(createToolsPlugin());
+  const tools = host.context.get("tools") as { list(): { name: string }[] } | undefined;
+  expect(tools?.list().map((tool) => tool.name)).toEqual([
+    "read",
+    "write",
+    "edit",
+    "bash",
+    "rg",
+    "ASK",
+  ]);
+});
+
 test("假 llm 驱动下循环能调用默认工具，效果落在工作树和本机进程", async () => {
   const root = await mkdtemp(join(tmpdir(), "atom-tools-"));
   try {

@@ -24,6 +24,7 @@
     "atom-loop": "workspace:*",
     "atom-mcp": "workspace:*",
     "atom-session": "workspace:*",
+    "atom-skill": "workspace:*",
     "atom-tools": "workspace:*"
   },
   "devDependencies": {

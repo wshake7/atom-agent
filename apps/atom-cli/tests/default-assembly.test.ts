@@ -54,7 +54,9 @@ test("默认装配占官方槽：循环、真 llm 模块、默认工具包；MCP
   const host = await loadAssembly(createDefaultPlugins());
   expect(host.context.get("loop")).toBeDefined();
   expect(host.context.get("llm")).toBeDefined();
-  const tools = host.context.get("tools") as { list(): { name: string }[] } | undefined;
+  const tools = host.context.get("tools") as
+    | { list(): { name: string; description?: string }[] }
+    | undefined;
   expect(tools?.list().map((tool) => tool.name)).toEqual([
     "read",
     "write",
@@ -62,9 +64,12 @@ test("默认装配占官方槽：循环、真 llm 模块、默认工具包；MCP
     "bash",
     "rg",
     "ASK",
+    "skill",
   ]);
+  expect(tools?.list().find((tool) => tool.name === "skill")?.description).toContain("无可用");
   expect(host.context.get("session")).toBeDefined();
   expect(host.context.get("compact")).toBeDefined();
+  expect(host.context.get("skills")).toBeUndefined();
   expect(host.context.get("sandbox")).toBeUndefined();
   expect(host.context.get("resources")).toBeUndefined();
   expect(host.context.get("prompts")).toBeUndefined();
@@ -72,10 +77,13 @@ test("默认装配占官方槽：循环、真 llm 模块、默认工具包；MCP
   expect(host.context.get("loop") as Loop | undefined).toBeDefined();
 });
 
-test("关掉默认工具包后循环看不到 read/write 等工具", async () => {
+test("关掉默认工具包后循环看不到 read/write 等工具，Skill 加载器仍在", async () => {
   const host = await loadAssembly(createDefaultPlugins({ tools: false }));
-  const tools = host.context.get("tools") as { list(): { name: string }[] } | undefined;
-  expect(tools?.list()).toEqual([]);
+  const tools = host.context.get("tools") as
+    | { list(): { name: string; description?: string }[] }
+    | undefined;
+  expect(tools?.list().map((tool) => tool.name)).toEqual(["skill"]);
+  expect(tools?.list()[0]?.description).toContain("无可用");
   expect(host.context.get("loop")).toBeDefined();
 });
 
@@ -89,6 +97,7 @@ test("打开 MCP 桥后其 tools 与默认工具包同在 tools 槽", async () =
     "bash",
     "rg",
     "ASK",
+    "skill",
     "echo",
   ]);
   expect(host.context.get("resources")).toBeUndefined();

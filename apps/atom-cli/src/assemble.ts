@@ -7,10 +7,12 @@ import { createMcpPlugin } from "atom-mcp";
 import type { McpPluginOptions, McpStdioServer } from "atom-mcp";
 import { createSessionPlugin } from "atom-session";
 import type { SessionPluginOptions } from "atom-session";
+import { createSkillPlugin, scanSkillCatalog } from "atom-skill";
+import type { SkillEntry } from "atom-skill";
 import { createToolsPlugin } from "atom-tools";
 import type { ToolsPluginOptions } from "atom-tools";
 import { parseArgv } from "./argv.ts";
-import { mergeCwdEnv, stackConfig, userRoot } from "./config.ts";
+import { mergeCwdEnv, skillSearchRoots, stackConfig, userRoot } from "./config.ts";
 
 export interface DefaultAssemblyOptions {
   readonly llm?: boolean | LlmPluginOptions;
@@ -18,6 +20,7 @@ export interface DefaultAssemblyOptions {
   readonly mcpServers?: readonly McpStdioServer[];
   readonly toolAllow?: readonly string[];
   readonly toolDeny?: readonly string[];
+  readonly skills?: readonly SkillEntry[];
   readonly session?: boolean | SessionPluginOptions;
 }
 
@@ -36,28 +39,6 @@ export interface Assembly {
     readonly apiKey: string;
   };
 }
-
-const emptyToolsPlugin: ResolvedPluginModule = {
-  id: "empty-tools",
-  apply(ctx) {
-    if (ctx.get("tools")) {
-      return;
-    }
-    const tools: { name: string }[] = [];
-    ctx.provide("tools", {
-      list: () => tools,
-      register(tool: { name: string }) {
-        tools.push(tool);
-        return () => {
-          const index = tools.indexOf(tool);
-          if (index >= 0) {
-            tools.splice(index, 1);
-          }
-        };
-      },
-    });
-  },
-};
 
 export function assemble(input: AssembleInput): Assembly {
   const flags = parseArgv(input.argv ?? []);
@@ -95,6 +76,7 @@ export function assemble(input: AssembleInput): Assembly {
       mcpServers: stacked.mcpServers,
       toolAllow: stacked.toolAllow,
       toolDeny: stacked.toolDeny,
+      skills: scanSkillCatalog(skillSearchRoots(input.cwd, env)),
       session: {
         root: userRoot(env),
         cwd: input.cwd,
@@ -116,9 +98,8 @@ export function createDefaultPlugins(options: DefaultAssemblyOptions = {}): Reso
     plugins.push(
       typeof options.tools === "object" ? createToolsPlugin(options.tools) : createToolsPlugin(),
     );
-  } else if (!options.mcpServers?.length) {
-    plugins.push(emptyToolsPlugin);
   }
+  plugins.push(createSkillPlugin({ catalog: options.skills ?? [] }));
   const mcp = createMcpPlugin(
     options.mcpServers?.length ? ({ servers: options.mcpServers } satisfies McpPluginOptions) : {},
   );

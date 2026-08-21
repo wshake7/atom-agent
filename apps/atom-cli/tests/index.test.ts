@@ -11,6 +11,7 @@ test("默认装配引用写死的插件模块", () => {
   expect(defaultPlugins.map((plugin) => plugin.id)).toEqual([
     "atom-llm",
     "atom-tools",
+    "atom-skill",
     "atom-mcp",
     "atom-session",
     "atom-compact",

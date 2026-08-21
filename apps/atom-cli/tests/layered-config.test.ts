@@ -110,6 +110,7 @@ test("用户层 settings 叠出三标量，宿主只吃已解析模块", async (
     expect(assembly.plugins.map((plugin) => plugin.id)).toEqual([
       "atom-llm",
       "atom-tools",
+      "atom-skill",
       "atom-mcp",
       "atom-session",
       "atom-compact",
@@ -119,7 +120,7 @@ test("用户层 settings 叠出三标量，宿主只吃已解析模块", async (
     try {
       expect(host.context.get("llm")).toBeDefined();
       expect(host.context.get("loop")).toBeDefined();
-      expect(toolNames(host)).toEqual(["read", "write", "edit", "bash", "rg", "ASK"]);
+      expect(toolNames(host)).toEqual(["read", "write", "edit", "bash", "rg", "ASK", "skill"]);
       expect(host.context.get("config")).toBeUndefined();
     } finally {
       await close();
@@ -413,6 +414,7 @@ test("--no-tools 不装默认工具包，MCP 工具仍走名单", async () => {
     const assembly = assembleFrom(tree, { argv: ["--no-tools"] });
     expect(assembly.plugins.map((plugin) => plugin.id)).toEqual([
       "atom-llm",
+      "atom-skill",
       "atom-mcp",
       "atom-session",
       "atom-compact",
@@ -420,7 +422,7 @@ test("--no-tools 不装默认工具包，MCP 工具仍走名单", async () => {
     ]);
     const { host, close } = await loadHost(assembly.plugins);
     try {
-      expect(toolNames(host)).toEqual(["mcp__echo__echo"]);
+      expect(toolNames(host)).toEqual(["skill", "mcp__echo__echo"]);
     } finally {
       await close();
     }
@@ -444,6 +446,7 @@ test("配置没有 plugins 路径表，不扫 plugins 目录，也没有 provide
     expect(assembly.plugins.map((plugin) => plugin.id)).toEqual([
       "atom-llm",
       "atom-tools",
+      "atom-skill",
       "atom-mcp",
       "atom-session",
       "atom-compact",

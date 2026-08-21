@@ -47,6 +47,13 @@ export function userRoot(env: NodeJS.ProcessEnv): string {
   return join(homedir(), ".atom-agent");
 }
 
+export function skillSearchRoots(cwd: string, env: NodeJS.ProcessEnv): string[] {
+  const resolved = resolve(cwd);
+  const gitRoot = findGitRoot(resolved);
+  const dirs = projectDirs(resolved, gitRoot);
+  return [join(userRoot(env), "skills"), ...dirs.map((dir) => join(dir, ".atom-agent", "skills"))];
+}
+
 export function stackConfig(input: {
   readonly cwd: string;
   readonly env: NodeJS.ProcessEnv;
