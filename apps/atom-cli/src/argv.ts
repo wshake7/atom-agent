@@ -140,11 +140,13 @@ function parseMcpJson(raw: string): McpStdioServer {
     rec.env && typeof rec.env === "object" && !Array.isArray(rec.env)
       ? (rec.env as Record<string, string>)
       : undefined;
+  const description = typeof rec.description === "string" ? rec.description : undefined;
   return {
     name,
     command,
     args: args as string[] | undefined,
     env,
+    description: description && description.length > 0 ? description : undefined,
   };
 }
 

@@ -5,6 +5,8 @@ export const SLASH_HELP = [
   "/session <id>",
   "/sessions",
   "/skill <name>",
+  "/skills",
+  "/mcps",
   "/model",
   "/help",
 ] as const;

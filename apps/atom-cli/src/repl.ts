@@ -3,9 +3,12 @@ import { createPluginHost } from "atom-kernel";
 import { LOOP_EVENTS } from "atom-loop";
 import type { AssistantDeltaPayload, Loop, ToolCallPayload, ToolEndPayload } from "atom-loop";
 import type { Session } from "atom-session";
+import type { McpRuntime } from "atom-mcp";
 import type { SkillEntry } from "atom-skill";
 import type { LlmCredentials } from "./assemble.ts";
 import { patchUserModel, readUserModelFields } from "./config.ts";
+import type { McpListing, SkillListing } from "./config.ts";
+import { renderMcps, renderSkills } from "./listings.ts";
 import { parseModelSlash, parseSlash, SLASH_HELP } from "./slash.ts";
 
 const PASTE_START = "\x1b[200~";
@@ -14,7 +17,6 @@ const HISTORY_UP = "\x1b[A";
 
 export interface LineReader {
   readonly readLine: () => Promise<string | undefined>;
-  readonly cancel: () => void;
   readonly close: () => void;
 }
 
@@ -92,18 +94,14 @@ export function createLineReader(
         waiters.push(resolve);
       });
     },
-    cancel: () => {
-      buffer = "";
-      const waiter = waiters.shift();
-      if (waiter) {
-        waiter("");
-      }
-    },
     close: () => {
       stdin.off("data", onData);
       stdin.off("end", onEnd);
       stdin.off("close", onEnd);
-      if (tty) {
+      if ("pause" in stdin && typeof stdin.pause === "function") {
+        stdin.pause();
+      }
+      if (tty && !closed) {
         options.stdout?.write("\x1b[?2004l");
       }
       closed = true;
@@ -181,9 +179,11 @@ export async function runRepl(options: {
   readonly stdin: NodeJS.ReadableStream;
   readonly stdout: { write(chunk: string): unknown };
   readonly readLine?: () => Promise<string | undefined>;
-  readonly cancelInput?: () => void;
+  readonly closeInput?: () => void;
   readonly prompt?: string;
-  readonly skills?: readonly SkillEntry[];
+  readonly skills?: readonly SkillEntry[] | (() => readonly SkillEntry[]);
+  readonly skillListings?: readonly SkillListing[] | (() => readonly SkillListing[]);
+  readonly mcpInventory?: readonly McpListing[];
   readonly llm?: LlmCredentials;
   readonly userRoot?: string;
   readonly cwd?: string;
@@ -222,7 +222,7 @@ export async function runRepl(options: {
     ? undefined
     : createLineReader(options.stdin, { stdout: options.stdout });
   const readLine = options.readLine ?? (() => owned?.readLine() ?? Promise.resolve(undefined));
-  const cancelInput = options.cancelInput ?? (() => owned?.cancel());
+  const closeInput = options.closeInput ?? (() => owned?.close());
   const history: string[] = [];
   const cwd = options.cwd ?? process.cwd();
   let turnAbort: AbortController | undefined;
@@ -232,7 +232,7 @@ export async function runRepl(options: {
       turnAbort.abort();
       return;
     }
-    cancelInput();
+    closeInput();
   };
   options.interrupt?.on("SIGINT", onInterrupt);
 
@@ -275,12 +275,15 @@ export async function runRepl(options: {
           slash,
           write,
           hostSession: () => host.context.get("session") as Session | undefined,
+          hostMcp: () => host.context.get("mcp") as McpRuntime | undefined,
           remountLoop: async () => {
             await remountLoop();
             loop = host.context.get("loop") as Loop;
           },
           cwd,
-          skills: options.skills ?? [],
+          skills: resolveList(options.skills),
+          skillListings: resolveList(options.skillListings),
+          mcpInventory: options.mcpInventory ?? [],
           llm: options.llm,
           userRoot: options.userRoot,
         });
@@ -316,13 +319,23 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
+function resolveList<T>(value: readonly T[] | (() => readonly T[]) | undefined): readonly T[] {
+  if (!value) {
+    return [];
+  }
+  return typeof value === "function" ? value() : value;
+}
+
 async function handleSlash(input: {
   readonly slash: { command: string; rest: string };
   readonly write: (text: string) => void;
   readonly hostSession: () => Session | undefined;
+  readonly hostMcp: () => McpRuntime | undefined;
   readonly remountLoop: () => Promise<void>;
   readonly cwd: string;
   readonly skills: readonly SkillEntry[];
+  readonly skillListings: readonly SkillListing[];
+  readonly mcpInventory: readonly McpListing[];
   readonly llm?: LlmCredentials;
   readonly userRoot?: string;
 }): Promise<"exit" | "handled" | { prompt: string }> {
@@ -330,6 +343,16 @@ async function handleSlash(input: {
   switch (command) {
     case "exit":
       return "exit";
+    case "skills":
+      for (const line of renderSkills(input.skillListings)) {
+        input.write(`${line}\n`);
+      }
+      return "handled";
+    case "mcps":
+      for (const line of renderMcps(input.mcpInventory, input.hostMcp())) {
+        input.write(`${line}\n`);
+      }
+      return "handled";
     case "help":
       for (const line of SLASH_HELP) {
         input.write(`${line}\n`);

@@ -46,7 +46,7 @@ Blocked by: 01
 
 ### 加载面
 
-纯文件约定。CLI 装配按已锁根扫一层 `<name>/SKILL.md`：`$ATOM_AGENT_HOME/skills/` 与 git 根→cwd 沿途 `.atom-agent/skills/`（前序：[装配与配置形态](./08-assembly-and-config-shape.md)）。无运行时 `register`。内核仍不发现。同名近 cwd 整颗替换（不合并正文）；坏条目跳过并告警。启动读一次。
+纯文件约定。CLI 装配按已锁根扫一层 `<name>/SKILL.md`：`$ATOM_AGENT_HOME/skills/` 与 git 根→cwd 沿途 `.atom-agent/skills/`（前序：[装配与配置形态](./08-assembly-and-config-shape.md)）。无运行时 `register`。内核仍不发现。同名近 cwd 整颗替换（不合并正文）；坏条目跳过并告警。加载器插件启动装一次；清单由加载器与斜杠每次现扫，不必为新增 `SKILL.md` 重启。
 
 ### 谁消费
 

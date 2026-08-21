@@ -95,6 +95,17 @@ test("假 llm 调用 skill({ name }) 后循环拿到正文，不是业务 functi
   });
 });
 
+test("catalog 为函数时每次 list/execute 重新取清单", async () => {
+  const catalog = [review];
+  const host = createPluginHost();
+  await host.load(createSkillPlugin({ catalog: () => catalog }));
+  const skill = (host.context.get("tools") as ToolsSlot).list()[0];
+  expect(skill?.description).toContain("review");
+  catalog.splice(0, catalog.length);
+  expect(skill?.description).toContain("无可用");
+  await expect(skill?.execute({ name: "review" })).rejects.toThrow("未知 Skill: review");
+});
+
 test("未知 name 走工具错误，不登记第二把工具", async () => {
   const llm = fakeLlm([
     () => [{ type: "toolCall", id: "s", name: "skill", arguments: { name: "missing" } }],

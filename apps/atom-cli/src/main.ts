@@ -3,9 +3,10 @@ import { join } from "node:path";
 import { createPluginHost } from "atom-kernel";
 import type { ResolvedPluginModule } from "atom-kernel";
 import type { Session } from "atom-session";
+import { scanSkillCatalog } from "atom-skill";
 import { parseArgv } from "./argv.ts";
 import { assemble } from "./assemble.ts";
-import { userRoot } from "./config.ts";
+import { listSkills, skillSearchRoots, userRoot } from "./config.ts";
 import { createLineReader, runRepl } from "./repl.ts";
 
 export async function main(
@@ -49,13 +50,15 @@ export async function main(
     await runRepl({
       plugins: assembly.plugins,
       llm: assembly.llm,
-      skills: assembly.skills,
+      skills: () => scanSkillCatalog(skillSearchRoots(cwd, env)),
+      skillListings: () => listSkills(cwd, env),
+      mcpInventory: assembly.mcpInventory,
       cwd,
       userRoot: userRoot(env),
       stdin,
       stdout,
       readLine: () => lines.readLine(),
-      cancelInput: () => lines.cancel(),
+      closeInput: () => lines.close(),
       interrupt: process,
       prompt: interactive ? "> " : undefined,
     });

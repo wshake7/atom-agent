@@ -3,13 +3,33 @@ import { homedir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { parseEnv } from "node:util";
 import type { McpStdioServer } from "atom-mcp";
+import { scanSkillRecords } from "atom-skill";
 import type { CliFlags } from "./argv.ts";
+
+export type ConfigLevel = "user" | "project" | "local";
+
+export interface SkillListing {
+  readonly name: string;
+  readonly description: string;
+  readonly status: "active" | "overridden";
+  readonly level: ConfigLevel;
+  readonly address: string;
+}
+
+export interface McpListing {
+  readonly name: string;
+  readonly description?: string;
+  readonly status: "connected" | "disabled" | "not-enabled";
+  readonly level: ConfigLevel;
+  readonly address: string;
+}
 
 export interface StackedConfig {
   readonly model?: string;
   readonly baseUrl?: string;
   readonly apiKey?: string;
   readonly mcpServers: readonly McpStdioServer[];
+  readonly mcpInventory: readonly McpListing[];
   readonly toolAllow?: readonly string[];
   readonly toolDeny?: readonly string[];
 }
@@ -48,10 +68,54 @@ export function userRoot(env: NodeJS.ProcessEnv): string {
 }
 
 export function skillSearchRoots(cwd: string, env: NodeJS.ProcessEnv): string[] {
+  return skillSearchLayers(cwd, env).map((layer) => layer.root);
+}
+
+export function skillSearchLayers(
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+): { root: string; level: ConfigLevel }[] {
   const resolved = resolve(cwd);
   const gitRoot = findGitRoot(resolved);
   const dirs = projectDirs(resolved, gitRoot);
-  return [join(userRoot(env), "skills"), ...dirs.map((dir) => join(dir, ".atom-agent", "skills"))];
+  return [
+    { root: join(userRoot(env), "skills"), level: "user" },
+    ...dirs.map((dir) => ({
+      root: join(dir, ".atom-agent", "skills"),
+      level: (dir === resolved && gitRoot !== resolved ? "local" : "project") as ConfigLevel,
+    })),
+  ];
+}
+
+export function listSkills(cwd: string, env: NodeJS.ProcessEnv): SkillListing[] {
+  const layers = skillSearchLayers(cwd, env);
+  const records: { name: string; description: string; level: ConfigLevel; file: string }[] = [];
+  for (const layer of layers) {
+    for (const item of scanSkillRecords([layer.root])) {
+      records.push({
+        name: item.name,
+        description: item.description,
+        level: layer.level,
+        file: item.file,
+      });
+    }
+  }
+  const activeFile = new Map<string, string>();
+  for (const item of records) {
+    activeFile.set(item.name, item.file);
+  }
+  const levelRank: Record<ConfigLevel, number> = { user: 0, project: 1, local: 2 };
+  return records
+    .map((item) => ({
+      name: item.name,
+      description: item.description,
+      status: (activeFile.get(item.name) === item.file ? "active" : "overridden") as
+        | "active"
+        | "overridden",
+      level: item.level,
+      address: item.file,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name) || levelRank[a.level] - levelRank[b.level]);
 }
 
 export function stackConfig(input: {
@@ -92,14 +156,30 @@ export function stackConfig(input: {
   ]);
 
   const servers = new Map<string, McpStdioServer>();
-  mergeServers(servers, readMcpSidecar(join(home, "mcp.json")));
+  const origins = new Map<string, { level: ConfigLevel; address: string }>();
+  mergeServers(
+    servers,
+    origins,
+    readMcpSidecar(join(home, "mcp.json")),
+    "user",
+    join(home, "mcp.json"),
+  );
   for (const dir of dirs) {
-    mergeServers(servers, readProjectMcp(dir, gitRoot));
+    const project = readProjectMcp(dir, gitRoot);
+    if (project) {
+      mergeServers(servers, origins, project.servers, "project", project.path);
+    }
   }
-  mergeServers(servers, readMcpSidecar(join(cwd, ".atom-agent", "mcp.local.json")));
+  const localMcp = join(cwd, ".atom-agent", "mcp.local.json");
+  mergeServers(servers, origins, readMcpSidecar(localMcp), "local", localMcp);
   for (const server of input.flags.mcpServers) {
     const name = server.name ?? server.command;
-    servers.set(name, { ...server, name });
+    const next = { ...server, name };
+    servers.set(name, next);
+    origins.set(name, {
+      level: "local",
+      address: [server.command, ...(server.args ?? [])].join(" "),
+    });
   }
 
   const settingsLayers = [userSettings, ...projectSettings, localSettings];
@@ -136,11 +216,32 @@ export function stackConfig(input: {
     }
   }
 
+  const connectedSet = new Set(connected);
+  const mcpInventory: McpListing[] = [...servers.keys()]
+    .sort((a, b) => a.localeCompare(b))
+    .map((name) => {
+      const server = servers.get(name);
+      const origin = origins.get(name);
+      const status: McpListing["status"] = connectedSet.has(name)
+        ? "connected"
+        : mcpDisable.has(name)
+          ? "disabled"
+          : "not-enabled";
+      return {
+        name,
+        description: server?.description,
+        status,
+        level: origin?.level ?? "user",
+        address: origin?.address ?? name,
+      };
+    });
+
   return {
     model,
     baseUrl,
     apiKey,
     mcpServers,
+    mcpInventory,
     toolAllow,
     toolDeny,
   };
@@ -308,15 +409,22 @@ function optionalStringArray(raw: unknown, label: string): readonly string[] | u
   return raw as string[];
 }
 
-function readProjectMcp(dir: string, gitRoot: string | undefined): Record<string, McpStdioServer> {
+function readProjectMcp(
+  dir: string,
+  gitRoot: string | undefined,
+): { path: string; servers: Record<string, McpStdioServer> } | undefined {
   const sidecar = join(dir, ".atom-agent", "mcp.json");
   if (existsSync(sidecar)) {
-    return readMcpSidecar(sidecar);
+    return { path: sidecar, servers: readMcpSidecar(sidecar) };
   }
   if (gitRoot && dir === gitRoot) {
-    return readMcpSidecar(join(dir, ".mcp.json"));
+    const fallback = join(dir, ".mcp.json");
+    if (!existsSync(fallback)) {
+      return undefined;
+    }
+    return { path: fallback, servers: readMcpSidecar(fallback) };
   }
-  return {};
+  return undefined;
 }
 
 function readMcpSidecar(path: string): Record<string, McpStdioServer> {
@@ -344,6 +452,7 @@ function readMcpSidecar(path: string): Record<string, McpStdioServer> {
       command,
       args: optionalStringArray(server.args, `${path} ${name}.args`) ?? undefined,
       env: optionalEnv(server.env, `${path} ${name}.env`),
+      description: readString(server.description),
     };
   }
   return servers;
@@ -362,9 +471,13 @@ function optionalEnv(raw: unknown, label: string): Readonly<Record<string, strin
 
 function mergeServers(
   target: Map<string, McpStdioServer>,
+  origins: Map<string, { level: ConfigLevel; address: string }>,
   incoming: Record<string, McpStdioServer>,
+  level: ConfigLevel,
+  address: string,
 ) {
   for (const [name, server] of Object.entries(incoming)) {
     target.set(name, server);
+    origins.set(name, { level, address });
   }
 }

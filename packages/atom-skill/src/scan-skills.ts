@@ -2,11 +2,31 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { SkillEntry } from "./create-skill.ts";
 
+export interface ScannedSkill extends SkillEntry {
+  readonly root: string;
+  readonly file: string;
+}
+
 export function scanSkillCatalog(
   roots: readonly string[],
   warn: (message: string) => void = console.warn,
 ): SkillEntry[] {
   const byName = new Map<string, SkillEntry>();
+  for (const item of scanSkillRecords(roots, warn)) {
+    byName.set(item.name, {
+      name: item.name,
+      description: item.description,
+      body: item.body,
+    });
+  }
+  return [...byName.values()];
+}
+
+export function scanSkillRecords(
+  roots: readonly string[],
+  warn: (message: string) => void = console.warn,
+): ScannedSkill[] {
+  const records: ScannedSkill[] = [];
   for (const root of roots) {
     if (!existsSync(root)) {
       continue;
@@ -40,14 +60,16 @@ export function scanSkillCatalog(
         warn(`跳过 Skill: ${file}（缺少 description 或 YAML 头）`);
         continue;
       }
-      byName.set(entry.name, {
+      records.push({
         name: entry.name,
         description: parsed.description,
         body: parsed.body,
+        root,
+        file,
       });
     }
   }
-  return [...byName.values()];
+  return records;
 }
 
 function parseSkillMarkdown(text: string): { description: string; body: string } | undefined {

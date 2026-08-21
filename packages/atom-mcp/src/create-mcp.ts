@@ -3,9 +3,25 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 
 export interface McpStdioServer {
   readonly name?: string;
+  readonly description?: string;
   readonly command: string;
   readonly args?: readonly string[];
   readonly env?: Readonly<Record<string, string>>;
+}
+
+export interface McpToolInfo {
+  readonly name: string;
+  readonly description?: string;
+}
+
+export interface McpServerSnapshot {
+  readonly name: string;
+  readonly description?: string;
+  readonly tools: readonly McpToolInfo[];
+}
+
+export interface McpRuntime {
+  readonly servers: readonly McpServerSnapshot[];
 }
 
 export interface McpPluginOptions {
@@ -42,18 +58,27 @@ export function createToolsRegistry(initial: readonly Tool[] = []): Tools {
 
 export async function connectMcpTools(servers: readonly McpStdioServer[]): Promise<{
   tools: Tool[];
+  servers: McpServerSnapshot[];
   close: () => Promise<void>;
 }> {
   const clients: Client[] = [];
   try {
     const tools: Tool[] = [];
+    const snapshots: McpServerSnapshot[] = [];
     for (const server of servers) {
       const client = await connectServer(server);
       clients.push(client);
-      tools.push(...(await listServerTools(client, server.name)));
+      const declared: McpToolInfo[] = [];
+      tools.push(...(await listServerTools(client, server.name, declared)));
+      snapshots.push({
+        name: server.name ?? server.command,
+        description: serverDescription(server, client),
+        tools: declared,
+      });
     }
     return {
       tools,
+      servers: snapshots,
       close: () => closeClients(clients),
     };
   } catch (error) {
@@ -74,12 +99,17 @@ async function connectServer(server: McpStdioServer): Promise<Client> {
   return client;
 }
 
-async function listServerTools(client: Client, serverName?: string): Promise<Tool[]> {
+async function listServerTools(
+  client: Client,
+  serverName: string | undefined,
+  declared: McpToolInfo[],
+): Promise<Tool[]> {
   const tools: Tool[] = [];
   let cursor: string | undefined;
   do {
     const page = await client.listTools(cursor ? { cursor } : undefined);
     for (const tool of page.tools) {
+      declared.push({ name: tool.name, description: tool.description });
       tools.push({
         name: serverName ? `mcp__${serverName}__${tool.name}` : tool.name,
         description: tool.description,
@@ -92,6 +122,12 @@ async function listServerTools(client: Client, serverName?: string): Promise<Too
     cursor = typeof page.nextCursor === "string" ? page.nextCursor : undefined;
   } while (cursor);
   return tools;
+}
+
+function serverDescription(server: McpStdioServer, client: Client): string | undefined {
+  const info = client.getServerVersion() as { title?: string } | undefined;
+  const live = client.getInstructions() ?? info?.title;
+  return server.description ?? (typeof live === "string" && live.length > 0 ? live : undefined);
 }
 
 async function callServerTool(

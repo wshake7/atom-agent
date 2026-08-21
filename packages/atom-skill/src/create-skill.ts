@@ -4,8 +4,10 @@ export interface SkillEntry {
   readonly body: string;
 }
 
+export type SkillCatalog = readonly SkillEntry[] | (() => readonly SkillEntry[]);
+
 export interface SkillPluginOptions {
-  readonly catalog?: readonly SkillEntry[];
+  readonly catalog?: SkillCatalog;
 }
 
 interface Tool {
@@ -20,11 +22,13 @@ export interface Tools {
   register(tool: Tool): () => void;
 }
 
-export function createSkillTool(catalog: readonly SkillEntry[] = []): Tool {
-  const byName = new Map(catalog.map((entry) => [entry.name, entry]));
+export function createSkillTool(catalog: SkillCatalog = []): Tool {
+  const load = () => (typeof catalog === "function" ? catalog() : catalog);
   return {
     name: "skill",
-    description: skillDescription(catalog),
+    get description() {
+      return skillDescription(load());
+    },
     parameters: {
       type: "object",
       properties: { name: { type: "string" } },
@@ -32,7 +36,7 @@ export function createSkillTool(catalog: readonly SkillEntry[] = []): Tool {
     },
     async execute(args) {
       const name = stringField(args, "name");
-      const entry = byName.get(name);
+      const entry = load().find((item) => item.name === name);
       if (!entry) {
         throw new Error(`未知 Skill: ${name}`);
       }

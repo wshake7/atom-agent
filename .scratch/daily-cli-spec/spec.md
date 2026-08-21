@@ -44,7 +44,7 @@ Status: ready-for-agent
 24. As an 作者, I want 粘贴多行合成一条再交给循环, so that 代码块和 ASK 答复都不必拆成多轮 stdin
 25. As an 作者, I want 回合中键盘中断接到已有 Abort、不杀进程, so that 跑飞能停、CLI 还在
 26. As an 作者, I want 空闲主提示上的斜杠被拦下、ASK 里的 `/` 当正文, so that 斜杠不是第二套 TUI，也不污染问答
-27. As an 作者, I want `/new` `/resume` `/session` `/sessions` `/exit` `/help`, so that 会话与退出不必记另一套 UI
+27. As an 作者, I want `/new` `/resume` `/session` `/sessions` `/exit` `/help` `/skills` `/mcps`, so that 会话、清单与退出不必记另一套 UI
 28. As an 作者, I want `/model` 立刻换本会话模型标识并按规则写用户层 settings, so that 换模型不必重启、也不换 baseUrl / key
 29. As an 作者, I want 屏幕上能看见思考增量与工具参数, so that 手感够用，而不必扩循环事件名
 30. As an 作者, I want 接上 OpenAI 兼容 `{baseUrl}/chat/completions` SSE 就能跑, so that 日常路径至少有一种兼容面
@@ -85,9 +85,9 @@ Status: ready-for-agent
 - 压缩挂点（[压缩与记忆挂在哪](./issues/06-compaction-and-memory-placement.md)）：官方槽 `compact` 把内存消息列表映射成送给模型的更短视图。不改原列表，不写盘。贡献方循环外插件，默认装配装一颗。默认循环可选消费：每次请求 `llm` 前若有提供方则调用；没有则恒等。记忆不挂槽，本规格不设计记忆库。不改 [ADR-0006](../../docs/adr/0006-default-loop-plugin-closed-set.md) 闭合集。
 - 压缩触发与范围（[压缩何时触发、压什么](./issues/14-compaction-trigger-and-scope.md)）：默认提供方按 **阈值 + 溢出恢复** 缩短。`compact(messages, reason)`，`reason` 为 `threshold` | `overflow` | `manual`。阈值：每次请求前调用，提供方可恒等。溢出：`llm` 报出合同上可识别的上下文溢出后，对**原文内存列表**再 compact；必须比恒等更短，否则把溢出交给用户、不再打 `llm`；更短则用新视图再打一次，最多一次。无提供方不 retry。`manual` 预留（低于阈值也缩短）；本阶段 REPL 无 `/compact`。缩短时切点前成摘要、切点后尾部原文保留；切点不得落在一对 tool call / tool result 中间。缩短才写压缩事件。循环事件名不扩。不锁 token 数字、估算算法、提示词模板、自动开关配置键。
 - `llm` 失败面：把「可识别的上下文溢出失败」写进 `llm` 合同。仍是 `stream` + Abort，不加方法、不加 usage、不加提供商方言。兼容库 / `atom-llm` 翻译提供商错误；循环只认这个失败面。这是对「零增量」的有意窄修订（见提供商簇）。
-- Skill（[Skill 是否独立于插件与工具](./issues/09-skill-vs-plugin-vs-tool.md)）：第四种东西，跟 Agent Skills 核心。带 `SKILL.md` 的按需指令包（`name` / `description` + 正文渐进披露）。不是插件，不是业务 function。搜索根：`$ATOM_AGENT_HOME/skills/` 与 git 根→cwd 沿途 `.atom-agent/skills/`。扫一层 `<name>/SKILL.md`。无运行时 `register`。同名近 cwd 整颗替换（不合并正文）；坏条目跳过并告警。启动读一次。默认循环零改动。默认工具包不认识 Skill。默认装配另写死 **Skill 加载器插件**：按装配清单往 `tools` 表登记 `skill({ name })`，把当前 name+description 写进这把工具的 description；正文只在返回值里。空清单仍挂着这把工具（description 写无可用）。allow/deny 若禁掉工具名 `skill`，加载器整把不登记。不要 `skills` 槽。明确没有：Skill 市场、递归 `**/SKILL.md`、扁平 `<name>.md`、per-skill enable、`--no-skills`。
-- REPL 手感（[REPL 手感最小集](./issues/10-repl-feel-minimum.md)）：界面仍是流式 REPL，无新官方槽，循环五事件名不变。必须有：**输入历史**（当前进程；存空闲主提示原始行，含斜杠原文；不含 ASK、不含 Skill 展开正文）；粘贴多行合成一条；回合中键盘中断 → 已有 Abort，不杀进程；空闲 stdin EOF 退出，`/exit` 随时退出，空闲中断信号不退出进程。斜杠只在空闲主提示、进 `loop.prompt` 之前拦；ASK 里当正文；未知命令报错不进循环。
-- 斜杠最小集：`/exit`；`/new`、`/resume`、`/session <id>`、`/sessions`（对齐会话合同）；`/skill <name>`（清单命中则立刻 `loop.prompt`：正文在前，name 后文本接后，空 remainder 也立刻交；未知名报错）；`/model`；`/help`（打印本名单，一行一个）。不要 `/compact`、`/mcp`、`/config`、picker。REPL 上屏已有思考增量（`assistantDelta` `type: "thinking"`）与工具 `arguments`。压缩 / 会话 / 斜杠不经循环总线。ASK 与主提示同一套提交单位。
+- Skill（[Skill 是否独立于插件与工具](./issues/09-skill-vs-plugin-vs-tool.md)）：第四种东西，跟 Agent Skills 核心。带 `SKILL.md` 的按需指令包（`name` / `description` + 正文渐进披露）。不是插件，不是业务 function。搜索根：`$ATOM_AGENT_HOME/skills/` 与 git 根→cwd 沿途 `.atom-agent/skills/`。扫一层 `<name>/SKILL.md`。无运行时 `register`。同名近 cwd 整颗替换（不合并正文）；坏条目跳过并告警。加载器插件启动装一次；`/skills`、`/skill` 与 `skill` 工具每次现扫搜索根（进程内新加的 `SKILL.md` 不必重启）。默认循环零改动。默认工具包不认识 Skill。默认装配另写死 **Skill 加载器插件**：按清单往 `tools` 表登记 `skill({ name })`，把当前 name+description 写进这把工具的 description；正文只在返回值里。空清单仍挂着这把工具（description 写无可用）。allow/deny 若禁掉工具名 `skill`，加载器整把不登记。不要 `skills` 槽。明确没有：Skill 市场、递归 `**/SKILL.md`、扁平 `<name>.md`、per-skill enable、`--no-skills`。
+- REPL 手感（[REPL 手感最小集](./issues/10-repl-feel-minimum.md)）：界面仍是流式 REPL，无新官方槽，循环五事件名不变。必须有：**输入历史**（当前进程；存空闲主提示原始行，含斜杠原文；不含 ASK、不含 Skill 展开正文）；粘贴多行合成一条；回合中键盘中断 → 已有 Abort，不杀进程；空闲 stdin EOF、`/exit`、空闲 SIGINT 均退出进程（`/exit` 须 pause stdin，避免 TTY 把事件循环挂住）。斜杠只在空闲主提示、进 `loop.prompt` 之前拦；ASK 里当正文；未知命令报错不进循环。
+- 斜杠最小集：`/exit`；`/new`、`/resume`、`/session <id>`、`/sessions`（对齐会话合同）；`/skill <name>`（清单命中则立刻 `loop.prompt`：正文在前，name 后文本接后，空 remainder 也立刻交；未知名报错）；`/skills`（列出 name / desc / 状态 `active|overridden` / 级别 `user|project|local` / 地址，每次现扫）；`/mcps`（列出已解析 MCP 的 name / desc / 状态 `connected|disabled|not-enabled` / 级别 / 地址，已连接的再列出其 tools；改 sidecar 要重启才连上新 server）；`/model`；`/help`（打印本名单，一行一个）。不要 `/compact`、不要改配置的 `/mcp` / `/config`、不要 picker。REPL 上屏已有思考增量（`assistantDelta` `type: "thinking"`）与工具 `arguments`。压缩 / 会话 / 斜杠不经循环总线。ASK 与主提示同一套提交单位。
 - `/model`：本会话立刻换模型标识。不重读配置文件、不换插件列表、不改 `llm` 槽、不换 `baseUrl` / API key。只写用户层 `$ATOM_AGENT_HOME/settings.json`。
 
   | 调用 | 本会话 | `default` | `forceDefault` |
@@ -148,7 +148,7 @@ Status: ready-for-agent
 - 装配与配置：只改 JSON（用户 / 项目 / 本机 / argv / env），启动后的模块列表与三标量跟着变；宿主仍只吃已解析模块
 - 跨进程会话：关掉再开，按 cwd 最近一次或 id 能 load 出原文三角消息；压缩事件在同一日志且原文仍在；裸启动是新会话
 - 长上下文：假 `llm` 下阈值可恒等、超预算缩短；切点不落在 tool 对中间；溢出则 `reason=overflow` 再打至多一次；不能更短则把溢出交给用户
-- Skill · 兼容包 · REPL 手感：一层 `SKILL.md` 进清单，`skill({ name })` 返回正文；`/skill` 立刻 prompt；兼容面一次真实或录制的 `{baseUrl}/chat/completions` SSE 经薄插件跑通；REPL 手感最小集可单独验。此段过 = **日常 CLI 闭环**
+- Skill · 兼容包 · REPL 手感：一层 `SKILL.md` 进清单，`skill({ name })` 返回正文；`/skill` 立刻 prompt；`/skills` 现扫列出状态与级别；兼容面一次真实或录制的 `{baseUrl}/chat/completions` SSE 经薄插件跑通；REPL 手感最小集可单独验。此段过 = **日常 CLI 闭环**
 
 测试运行器沿用现有约定：`vite-plus/test`。真模型与真 MCP 的检查允许标为需要外部依赖；循环、压缩可选消费、会话追加、配置叠层必须用假适配器在默认测试里锁死。
 

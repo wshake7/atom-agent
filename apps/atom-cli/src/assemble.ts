@@ -8,11 +8,12 @@ import type { McpPluginOptions, McpStdioServer } from "atom-mcp";
 import { createSessionPlugin } from "atom-session";
 import type { SessionPluginOptions } from "atom-session";
 import { createSkillPlugin, scanSkillCatalog } from "atom-skill";
-import type { SkillEntry } from "atom-skill";
+import type { SkillCatalog, SkillEntry } from "atom-skill";
 import { createToolsPlugin } from "atom-tools";
 import type { ToolsPluginOptions } from "atom-tools";
 import { parseArgv } from "./argv.ts";
-import { mergeCwdEnv, skillSearchRoots, stackConfig, userRoot } from "./config.ts";
+import { listSkills, mergeCwdEnv, skillSearchRoots, stackConfig, userRoot } from "./config.ts";
+import type { McpListing, SkillListing } from "./config.ts";
 
 export interface DefaultAssemblyOptions {
   readonly llm?: boolean | LlmPluginOptions;
@@ -20,7 +21,7 @@ export interface DefaultAssemblyOptions {
   readonly mcpServers?: readonly McpStdioServer[];
   readonly toolAllow?: readonly string[];
   readonly toolDeny?: readonly string[];
-  readonly skills?: readonly SkillEntry[];
+  readonly skills?: SkillCatalog;
   readonly session?: boolean | SessionPluginOptions;
 }
 
@@ -42,6 +43,8 @@ export interface Assembly {
   /** 本进程可变三标量；薄 llm 插件每次调用读当前值。 */
   readonly llm: LlmCredentials;
   readonly skills: readonly SkillEntry[];
+  readonly skillListings: readonly SkillListing[];
+  readonly mcpInventory: readonly McpListing[];
 }
 
 export function assemble(input: AssembleInput): Assembly {
@@ -72,17 +75,20 @@ export function assemble(input: AssembleInput): Assembly {
     : flags.resume
       ? "latest"
       : "new";
-  const skills = scanSkillCatalog(skillSearchRoots(input.cwd, env));
+  const loadSkills = () => scanSkillCatalog(skillSearchRoots(input.cwd, env));
+  const skills = loadSkills();
   return {
     llm,
     skills,
+    skillListings: listSkills(input.cwd, env),
+    mcpInventory: stacked.mcpInventory,
     plugins: createDefaultPlugins({
       llm,
       tools,
       mcpServers: stacked.mcpServers,
       toolAllow: stacked.toolAllow,
       toolDeny: stacked.toolDeny,
-      skills,
+      skills: loadSkills,
       session: {
         root: userRoot(env),
         cwd: input.cwd,

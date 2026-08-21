@@ -2,7 +2,13 @@ import type { ResolvedPluginModule } from "atom-kernel";
 import { connectMcpTools, createToolsRegistry } from "./create-mcp.ts";
 import type { McpPluginOptions, Tools } from "./create-mcp.ts";
 
-export type { McpPluginOptions, McpStdioServer } from "./create-mcp.ts";
+export type {
+  McpPluginOptions,
+  McpRuntime,
+  McpServerSnapshot,
+  McpStdioServer,
+  McpToolInfo,
+} from "./create-mcp.ts";
 
 export function createMcpPlugin(options: McpPluginOptions = {}): ResolvedPluginModule {
   return {
@@ -11,7 +17,8 @@ export function createMcpPlugin(options: McpPluginOptions = {}): ResolvedPluginM
       if (!options.servers?.length) {
         return;
       }
-      const { tools, close } = await connectMcpTools(options.servers);
+      const { tools, servers, close } = await connectMcpTools(options.servers);
+      ctx.provide("mcp", { servers });
       const previous = ctx.get("tools") as Tools | undefined;
       if (!previous) {
         ctx.provide("tools", createToolsRegistry(tools));
