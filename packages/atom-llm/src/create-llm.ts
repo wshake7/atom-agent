@@ -64,7 +64,7 @@ export function createLlm(options: LlmPluginOptions = {}): Llm {
       });
       if (!response.ok) {
         const detail = await response.text();
-        throw new Error(`llm 调用失败: ${response.status} ${detail}`);
+        throw llmFailure(response.status, detail);
       }
       if (!response.body) {
         throw new Error("llm 调用失败: 空响应体");
@@ -108,6 +108,28 @@ export function createLlm(options: LlmPluginOptions = {}): Llm {
       }
     },
   };
+}
+
+function llmFailure(status: number, detail: string): Error {
+  if (isContextOverflow(status, detail)) {
+    const error = new Error(`上下文溢出: ${status} ${detail}`);
+    error.name = "ContextOverflowError";
+    return error;
+  }
+  return new Error(`llm 调用失败: ${status} ${detail}`);
+}
+
+function isContextOverflow(status: number, detail: string): boolean {
+  if (status === 413) {
+    return true;
+  }
+  const text = detail.toLowerCase();
+  return (
+    text.includes("context_length_exceeded") ||
+    text.includes("context length") ||
+    text.includes("maximum context") ||
+    text.includes("prompt is too long")
+  );
 }
 
 function resolveConfig(options: LlmPluginOptions) {

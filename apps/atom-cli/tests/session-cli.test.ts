@@ -5,7 +5,7 @@ import { Readable, Writable } from "node:stream";
 import { createPluginHost } from "atom-kernel";
 import type { LoadedPlugin, ResolvedPluginModule } from "atom-kernel";
 import type { Llm, Loop } from "atom-loop";
-import type { Session } from "atom-session";
+import { isMessageRecord, type Session } from "atom-session";
 import { expect, test } from "vite-plus/test";
 import { assemble, main } from "../src/index.ts";
 
@@ -186,6 +186,7 @@ test("续聊跟当前装配走，新助手盖当时模型标识", async () => {
     try {
       await (opened.host.context.get("loop") as Loop).prompt("再问");
       const models = (opened.host.context.get("session") as Session).current.records
+        .filter(isMessageRecord)
         .filter((record) => record.message.role === "assistant")
         .map((record) => record.model);
       expect(models).toEqual(["m1", "m2"]);

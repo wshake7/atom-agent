@@ -1,4 +1,5 @@
 import type { ResolvedPluginModule } from "atom-kernel";
+import { createCompactPlugin } from "atom-compact";
 import { createLlmPlugin } from "atom-llm";
 import type { LlmPluginOptions } from "atom-llm";
 import { plugin as loopPlugin } from "atom-loop";
@@ -129,6 +130,7 @@ export function createDefaultPlugins(options: DefaultAssemblyOptions = {}): Reso
         : createSessionPlugin({ cwd: process.cwd() }),
     );
   }
+  plugins.push(createCompactPlugin());
   plugins.push(loopPlugin);
   return plugins;
 }

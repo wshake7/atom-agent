@@ -6,11 +6,19 @@
 
 **Blocked by:** 16 — 跨进程会话：关掉再开原文还在
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] 点名官方槽 `compact`（压缩）。贡献方是循环外插件，默认装配装一颗。`compact(messages, reason)`，`reason` 为 `threshold` | `overflow` | `manual`。不改原消息列表，不写盘。记忆不挂槽。不进循环闭合集。循环事件名不扩
-- [ ] 默认循环可选消费：每次请求 `llm` 前若有提供方则 `compact(..., "threshold")`（提供方可恒等）；没有提供方则恒等。`manual` 预留；本阶段 REPL 无 `/compact`
-- [ ] `llm` 合同仍是可流式、可 Abort 的 `stream`，只多一个可识别的上下文溢出失败面：不加方法、不加 usage、不加提供商方言。循环只认这个失败面
-- [ ] 溢出恢复：`llm` 报出可识别溢出后，对原文内存列表再 `compact(..., "overflow")`。必须比恒等更短，否则把溢出交给用户、不再打 `llm`；更短则用新视图再打一次，最多一次。无提供方不 retry
-- [ ] 缩短时切点前成摘要、切点后尾部原文保留；切点不得落在一对 tool call / tool result 中间。缩短才写压缩事件（摘要 + 切点）进同一份会话日志，原文仍在。恢复后下次请求仍把原文列表交给 `compact`；压缩事件只用来回溯当时模型看到的视图
-- [ ] 假 `llm` 下可验：阈值可恒等、超预算缩短；切点不落在 tool 对中间；溢出则 `reason=overflow` 再打至多一次；不能更短则把溢出交给用户。不断言 token 数字、估算算法、提示词模板。无记忆库
+- [x] 点名官方槽 `compact`（压缩）。贡献方是循环外插件，默认装配装一颗。`compact(messages, reason)`，`reason` 为 `threshold` | `overflow` | `manual`。不改原消息列表，不写盘。记忆不挂槽。不进循环闭合集。循环事件名不扩
+- [x] 默认循环可选消费：每次请求 `llm` 前若有提供方则 `compact(..., "threshold")`（提供方可恒等）；没有提供方则恒等。`manual` 预留；本阶段 REPL 无 `/compact`
+- [x] `llm` 合同仍是可流式、可 Abort 的 `stream`，只多一个可识别的上下文溢出失败面：不加方法、不加 usage、不加提供商方言。循环只认这个失败面
+- [x] 溢出恢复：`llm` 报出可识别溢出后，对原文内存列表再 `compact(..., "overflow")`。必须比恒等更短，否则把溢出交给用户、不再打 `llm`；更短则用新视图再打一次，最多一次。无提供方不 retry
+- [x] 缩短时切点前成摘要、切点后尾部原文保留；切点不得落在一对 tool call / tool result 中间。缩短才写压缩事件（摘要 + 切点）进同一份会话日志，原文仍在。恢复后下次请求仍把原文列表交给 `compact`；压缩事件只用来回溯当时模型看到的视图
+- [x] 假 `llm` 下可验：阈值可恒等、超预算缩短；切点不落在 tool 对中间；溢出则 `reason=overflow` 再打至多一次；不能更短则把溢出交给用户。不断言 token 数字、估算算法、提示词模板。无记忆库
+
+## Comments
+
+实现落在 `atom-compact`（官方槽提供方）+ 默认循环可选消费 / 溢出最多 retry 一次 + `session.appendCompaction` + 默认装配。
+
+- `compact(messages, reason)` 只读视图；`threshold` 可恒等，`overflow` / `manual` 尽量缩短。切点不裂 tool 对。
+- `llm` 增加 `ContextOverflowError` 失败面；`atom-llm` 翻译 HTTP 溢出。循环只认这个 name。
+- 缩短才写压缩事件；`session.messages` 仍是原文。无 `/compact`。

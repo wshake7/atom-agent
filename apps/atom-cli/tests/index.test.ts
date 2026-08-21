@@ -13,6 +13,7 @@ test("默认装配引用写死的插件模块", () => {
     "atom-tools",
     "atom-mcp",
     "atom-session",
+    "atom-compact",
     "atom-loop",
   ]);
 });

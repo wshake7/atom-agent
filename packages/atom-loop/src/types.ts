@@ -92,6 +92,35 @@ export interface Llm {
   stream(request: LlmRequest): AsyncIterable<LlmChunk>;
 }
 
+/** 循环只认这个上下文溢出失败面。不加方法、不加 usage、不加提供商方言。 */
+export class ContextOverflowError extends Error {
+  constructor(message = "上下文溢出") {
+    super(message);
+    this.name = "ContextOverflowError";
+  }
+}
+
+export function isContextOverflowError(error: unknown): boolean {
+  return error instanceof Error && error.name === "ContextOverflowError";
+}
+
+export type CompactReason = "threshold" | "overflow" | "manual";
+
+export interface CompactResult {
+  readonly messages: readonly Message[];
+  readonly shortened: boolean;
+  readonly summary?: string;
+  readonly cutIndex?: number;
+}
+
+/** 默认循环可选消费：没有提供方则恒等。 */
+export interface Compact {
+  compact(
+    messages: readonly Message[],
+    reason: CompactReason,
+  ): CompactResult | Promise<CompactResult>;
+}
+
 export interface PromptOptions {
   readonly signal?: AbortSignal;
 }

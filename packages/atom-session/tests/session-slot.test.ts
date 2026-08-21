@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createPluginHost } from "atom-kernel";
 import { expect, test } from "vite-plus/test";
-import { createSessionPlugin } from "../src/index.ts";
+import { createSessionPlugin, isCompactionRecord, isMessageRecord } from "../src/index.ts";
 import type { Session } from "../src/index.ts";
 
 const triangle = [
@@ -68,9 +68,9 @@ test("关掉宿主再开，按 id 能 load 出原文三角消息", async () => {
         { type: "toolCall", id: "c1", name: "echo", arguments: { text: "hi" } },
       ],
     });
-    const assistant = second.session.current.records.find(
-      (record) => record.message.role === "assistant",
-    );
+    const assistant = second.session.current.records
+      .filter(isMessageRecord)
+      .find((record) => record.message.role === "assistant");
     expect(assistant?.model).toBe("m1");
     expect(assistant?.provider).toBe("atom-llm");
     expect(assistant?.timestamp).toEqual(expect.any(String));
@@ -138,9 +138,39 @@ test("续聊盖当时装配标识，不冻写下那天的模型", async () => {
       content: [{ type: "text", text: "新答" }],
     });
     const models = session.current.records
+      .filter(isMessageRecord)
       .filter((record) => record.message.role === "assistant")
       .map((record) => record.model);
     expect(models).toEqual(["m1", "m2"]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("缩短才写压缩事件进同一份日志，原文消息仍在", async () => {
+  const root = await mkdtemp(join(tmpdir(), "atom-session-"));
+  const cwd = join(root, "proj");
+  try {
+    const first = await loadSession({ root, cwd });
+    for (const message of triangle) {
+      first.session.current.append(message);
+    }
+    first.session.current.appendCompaction({ summary: "早先对话摘要", cutIndex: 1 });
+    const id = first.session.current.id;
+    expect(first.session.current.messages).toEqual(triangle);
+    expect(first.session.current.records.some(isCompactionRecord)).toBe(true);
+
+    const second = await loadSession({ root, cwd, start: { id } });
+    expect(second.session.current.messages).toEqual(triangle);
+    const compaction = second.session.current.records.find(isCompactionRecord);
+    expect(compaction).toMatchObject({
+      kind: "compaction",
+      summary: "早先对话摘要",
+      cutIndex: 1,
+    });
+    expect(compaction && "timestamp" in compaction ? compaction.timestamp : undefined).toEqual(
+      expect.any(String),
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -1,12 +1,17 @@
 import type { ResolvedPluginModule } from "atom-kernel";
 import { createLoop } from "./create-loop.ts";
-import type { Llm, Message, Tools } from "./types.ts";
+import type { Compact, Llm, Message, Tools } from "./types.ts";
 
 export {
+  ContextOverflowError,
+  isContextOverflowError,
   LOOP_EVENTS,
   type AssistantBlock,
   type AssistantDeltaPayload,
   type AssistantMessage,
+  type Compact,
+  type CompactReason,
+  type CompactResult,
   type Llm,
   type LlmChunk,
   type LlmRequest,
@@ -27,11 +32,16 @@ export const plugin = {
   id: "atom-loop",
   inject: ["llm", "tools"],
   apply(ctx) {
-    const log = (
-      ctx.get("session") as
-        | { current?: { messages?: readonly Message[]; append?: (message: Message) => void } }
-        | undefined
-    )?.current;
+    const session = ctx.get("session") as
+      | {
+          current?: {
+            messages?: readonly Message[];
+            append?: (message: Message) => void;
+            appendCompaction?: (event: { summary: string; cutIndex: number }) => void;
+          };
+        }
+      | undefined;
+    const log = session?.current;
     ctx.provide(
       "loop",
       createLoop({
@@ -40,8 +50,12 @@ export const plugin = {
         },
         getLlm: () => ctx.get("llm") as Llm,
         getTools: () => ctx.get("tools") as Tools,
+        getCompact: () => ctx.get("compact") as Compact | undefined,
         initialMessages: log?.messages,
         persist: log?.append ? (message) => log.append?.(message) : undefined,
+        persistCompaction: log?.appendCompaction
+          ? (event) => log.appendCompaction?.(event)
+          : undefined,
       }),
     );
   },

@@ -1,7 +1,17 @@
 import { createPluginHost } from "atom-kernel";
 import { expect, test } from "vite-plus/test";
-import { LOOP_EVENTS, plugin } from "../src/index.ts";
-import type { Llm, LlmChunk, Loop, Message, Tool, Tools } from "../src/index.ts";
+import { ContextOverflowError, LOOP_EVENTS, plugin } from "../src/index.ts";
+import type {
+  Compact,
+  CompactReason,
+  CompactResult,
+  Llm,
+  LlmChunk,
+  Loop,
+  Message,
+  Tool,
+  Tools,
+} from "../src/index.ts";
 
 function fakeLlm(
   replies: ((messages: readonly Message[]) => LlmChunk[] | Promise<LlmChunk[]>)[],
@@ -44,7 +54,14 @@ function fakeTools(tools: readonly Tool[]): Tools {
 async function loadRound(
   llm: Llm,
   tools: Tools,
-  session?: { messages: Message[]; append(message: Message): void },
+  extras?: {
+    session?: {
+      messages: Message[];
+      append(message: Message): void;
+      appendCompaction?(event: { summary: string; cutIndex: number }): void;
+    };
+    compact?: Compact;
+  },
 ) {
   const host = createPluginHost();
   await host.load({
@@ -59,7 +76,8 @@ async function loadRound(
       ctx.provide("tools", tools);
     },
   });
-  if (session) {
+  if (extras?.session) {
+    const session = extras.session;
     await host.load({
       id: "fake-session",
       apply(ctx) {
@@ -71,8 +89,20 @@ async function loadRound(
               return session.messages;
             },
             append: (message: Message) => session.append(message),
+            appendCompaction: session.appendCompaction
+              ? (event: { summary: string; cutIndex: number }) => session.appendCompaction?.(event)
+              : undefined,
           },
         });
+      },
+    });
+  }
+  if (extras?.compact) {
+    const compact = extras.compact;
+    await host.load({
+      id: "fake-compact",
+      apply(ctx) {
+        ctx.provide("compact", compact);
       },
     });
   }
@@ -82,6 +112,23 @@ async function loadRound(
     throw new Error("loop 槽为空");
   }
   return { host, loop };
+}
+
+function recordingCompact(
+  handler: (messages: readonly Message[], reason: CompactReason) => CompactResult,
+): Compact & {
+  readonly calls: readonly { messages: readonly Message[]; reason: CompactReason }[];
+} {
+  const calls: { messages: readonly Message[]; reason: CompactReason }[] = [];
+  return {
+    get calls() {
+      return calls;
+    },
+    compact(messages, reason) {
+      calls.push({ messages: messages.map((message) => message), reason });
+      return handler(messages, reason);
+    },
+  };
 }
 
 test("只装循环、不装 llm 与 tools 时 loop 槽仍空", async () => {
@@ -375,9 +422,11 @@ test("有 session 提供方则追加终态消息；没有则纯内存", async ()
     fakeLlm([() => [{ type: "text", text: "好" }]]),
     fakeTools([]),
     {
-      messages: stored,
-      append(message) {
-        stored.push(message);
+      session: {
+        messages: stored,
+        append(message) {
+          stored.push(message);
+        },
       },
     },
   );
@@ -405,9 +454,11 @@ test("恢复时工厂吃初始原文列表，Loop 仍是 messages + prompt", asy
   const stored = [...initial];
   const llm = fakeLlm([() => [{ type: "text", text: "继续" }]]);
   const { loop } = await loadRound(llm, fakeTools([]), {
-    messages: stored,
-    append(message) {
-      stored.push(message);
+    session: {
+      messages: stored,
+      append(message) {
+        stored.push(message);
+      },
     },
   });
   expect(loop).toEqual(expect.objectContaining({ messages: initial }));
@@ -441,9 +492,11 @@ test("Abort 半截助手不落盘，已写入的 user 终态会追加", async ()
     },
   };
   const { loop } = await loadRound(llm, fakeTools([]), {
-    messages: stored,
-    append(message) {
-      stored.push(message);
+    session: {
+      messages: stored,
+      append(message) {
+        stored.push(message);
+      },
     },
   });
   const controller = new AbortController();
@@ -453,4 +506,208 @@ test("Abort 半截助手不落盘，已写入的 user 终态会追加", async ()
   await expect(pending).rejects.toSatisfy((error) => error instanceof Error);
   expect(stored).toEqual([{ role: "user", content: "停" }]);
   expect(loop.messages).toEqual(stored);
+});
+
+test("没有 compact 提供方则恒等；有提供方时阈值可恒等且不改原文列表", async () => {
+  const identity = recordingCompact((messages) => ({ messages, shortened: false }));
+  const llm = fakeLlm([() => [{ type: "text", text: "答" }]]);
+  const { loop } = await loadRound(llm, fakeTools([]), { compact: identity });
+  await loop.prompt("嗨");
+  expect(identity.calls.map((call) => call.reason)).toEqual(["threshold"]);
+  expect(llm.received[0]).toEqual([{ role: "user", content: "嗨" }]);
+  expect(loop.messages).toEqual([
+    { role: "user", content: "嗨" },
+    { role: "assistant", content: [{ type: "text", text: "答" }] },
+  ]);
+
+  const none = fakeLlm([() => [{ type: "text", text: "原样" }]]);
+  const without = await loadRound(none, fakeTools([]));
+  await without.loop.prompt("嗨");
+  expect(none.received[0]).toEqual([{ role: "user", content: "嗨" }]);
+  expect(without.host.context.get("compact")).toBeUndefined();
+});
+
+test("超预算缩短后 llm 看见压缩视图，原文内存列表仍在；下次仍交原文", async () => {
+  const history: Message[] = [
+    { role: "user", content: "很久以前".repeat(20) },
+    { role: "assistant", content: [{ type: "text", text: "那时" }] },
+    { role: "user", content: "昨天" },
+    { role: "assistant", content: [{ type: "text", text: "记得" }] },
+  ];
+  const compact = recordingCompact((messages) => {
+    if (messages.length < 5) {
+      return { messages, shortened: false };
+    }
+    return {
+      messages: [{ role: "user", content: "摘要" }, ...messages.slice(2)],
+      shortened: true,
+      summary: "摘要",
+      cutIndex: 2,
+    };
+  });
+  const stored: Message[] = [...history];
+  const events: { summary: string; cutIndex: number }[] = [];
+  const llm = fakeLlm([
+    () => [{ type: "text", text: "继续" }],
+    () => [{ type: "text", text: "再来" }],
+  ]);
+  const topics: string[] = [];
+  const { host, loop } = await loadRound(llm, fakeTools([]), {
+    compact,
+    session: {
+      messages: stored,
+      append(message) {
+        stored.push(message);
+      },
+      appendCompaction(event) {
+        events.push(event);
+      },
+    },
+  });
+  host.events.subscribe("loop/compact", () => {
+    topics.push("compact");
+  });
+  host.events.subscribe(LOOP_EVENTS.turnStart, () => {
+    topics.push("start");
+  });
+  host.events.subscribe(LOOP_EVENTS.turnEnd, () => {
+    topics.push("end");
+  });
+
+  await loop.prompt("下一句");
+
+  expect(compact.calls[0]?.reason).toBe("threshold");
+  expect(llm.received[0]).toEqual([
+    { role: "user", content: "摘要" },
+    { role: "user", content: "昨天" },
+    { role: "assistant", content: [{ type: "text", text: "记得" }] },
+    { role: "user", content: "下一句" },
+  ]);
+  expect(loop.messages).toEqual([
+    ...history,
+    { role: "user", content: "下一句" },
+    { role: "assistant", content: [{ type: "text", text: "继续" }] },
+  ]);
+  expect(events).toEqual([{ summary: "摘要", cutIndex: 2 }]);
+  expect(topics).toEqual(["start", "end"]);
+
+  await loop.prompt("又一句");
+  expect(compact.calls[1]?.messages).toEqual(loop.messages.slice(0, -1));
+  expect(compact.calls[1]?.reason).toBe("threshold");
+});
+
+test("溢出则 reason=overflow 再打至多一次；不能更短则把溢出交给用户", async () => {
+  const history: Message[] = [
+    { role: "user", content: "早先".repeat(30) },
+    { role: "assistant", content: [{ type: "text", text: "旧" }] },
+    { role: "user", content: "现在" },
+  ];
+  const compact = recordingCompact((messages, reason) => {
+    if (reason === "threshold") {
+      return { messages, shortened: false };
+    }
+    return {
+      messages: [{ role: "user", content: "摘要" }, messages.at(-1)!],
+      shortened: true,
+      summary: "摘要",
+      cutIndex: messages.length - 1,
+    };
+  });
+  const llm = fakeLlm([
+    () => {
+      throw new ContextOverflowError();
+    },
+    () => [{ type: "text", text: "压完了" }],
+  ]);
+  const events: { summary: string; cutIndex: number }[] = [];
+  const { loop } = await loadRound(llm, fakeTools([]), {
+    compact,
+    session: {
+      messages: [...history],
+      append() {},
+      appendCompaction(event) {
+        events.push(event);
+      },
+    },
+  });
+  await loop.prompt("问");
+  expect(compact.calls.map((call) => call.reason)).toEqual(["threshold", "overflow"]);
+  expect(events).toEqual([{ summary: "摘要", cutIndex: history.length }]);
+  expect(llm.received).toHaveLength(2);
+  expect(llm.received[1]).toEqual([
+    { role: "user", content: "摘要" },
+    { role: "user", content: "问" },
+  ]);
+  expect(loop.messages.at(-1)).toEqual({
+    role: "assistant",
+    content: [{ type: "text", text: "压完了" }],
+  });
+
+  const stuck = recordingCompact((messages) => ({
+    messages,
+    shortened: true,
+    summary: "假",
+    cutIndex: 0,
+  }));
+  const failing = fakeLlm([
+    () => {
+      throw new ContextOverflowError();
+    },
+    () => [{ type: "text", text: "不该打" }],
+  ]);
+  const second = await loadRound(failing, fakeTools([]), { compact: stuck });
+  await expect(second.loop.prompt("问")).rejects.toSatisfy(
+    (error) => error instanceof ContextOverflowError,
+  );
+  expect(failing.received).toHaveLength(1);
+  expect(stuck.calls.map((call) => call.reason)).toEqual(["threshold", "overflow"]);
+
+  const none = fakeLlm([
+    () => {
+      throw new ContextOverflowError();
+    },
+    () => [{ type: "text", text: "不该打" }],
+  ]);
+  const without = await loadRound(none, fakeTools([]));
+  await expect(without.loop.prompt("问")).rejects.toSatisfy(
+    (error) => error instanceof ContextOverflowError,
+  );
+  expect(none.received).toHaveLength(1);
+});
+
+test("溢出恢复最多再打一枪，第二次溢出不再 compact", async () => {
+  const compact = recordingCompact((messages, reason) => {
+    if (reason === "overflow") {
+      return {
+        messages: [{ role: "user", content: "摘要" }, messages.at(-1)!],
+        shortened: true,
+        summary: "摘要",
+        cutIndex: messages.length - 1,
+      };
+    }
+    return { messages, shortened: false };
+  });
+  const llm = fakeLlm([
+    () => {
+      throw new ContextOverflowError();
+    },
+    () => {
+      throw new ContextOverflowError();
+    },
+  ]);
+  const { loop } = await loadRound(llm, fakeTools([]), {
+    compact,
+    session: {
+      messages: [
+        { role: "user", content: "早先".repeat(40) },
+        { role: "assistant", content: [{ type: "text", text: "旧" }] },
+      ],
+      append() {},
+    },
+  });
+  await expect(loop.prompt("问")).rejects.toSatisfy(
+    (error) => error instanceof ContextOverflowError,
+  );
+  expect(compact.calls.map((call) => call.reason)).toEqual(["threshold", "overflow"]);
+  expect(llm.received).toHaveLength(2);
 });

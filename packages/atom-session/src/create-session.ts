@@ -7,13 +7,14 @@ import {
   writeFileSync,
 } from "node:fs";
 import { resolve } from "node:path";
-import type {
-  Session,
-  SessionLog,
-  SessionMessage,
-  SessionPluginOptions,
-  SessionRecord,
-  SessionStamp,
+import {
+  isMessageRecord,
+  type Session,
+  type SessionLog,
+  type SessionMessage,
+  type SessionPluginOptions,
+  type SessionRecord,
+  type SessionStamp,
 } from "./types.ts";
 
 interface StoredLog {
@@ -115,7 +116,7 @@ function wrapLog(
     id: stored.id,
     cwd: stored.cwd,
     get messages() {
-      return records.map((record) => record.message);
+      return records.flatMap((record) => (isMessageRecord(record) ? [record.message] : []));
     },
     get records() {
       return records;
@@ -127,6 +128,16 @@ function wrapLog(
         timestamp: new Date().toISOString(),
         model: extra?.model,
         provider: extra?.provider,
+      };
+      records.push(record);
+      store.append(stored.id, record);
+    },
+    appendCompaction(event) {
+      const record: SessionRecord = {
+        kind: "compaction",
+        summary: event.summary,
+        cutIndex: event.cutIndex,
+        timestamp: new Date().toISOString(),
       };
       records.push(record);
       store.append(stored.id, record);

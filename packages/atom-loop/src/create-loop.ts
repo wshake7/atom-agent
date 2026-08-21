@@ -1,7 +1,10 @@
-import { LOOP_EVENTS } from "./types.ts";
+import { isContextOverflowError, LOOP_EVENTS } from "./types.ts";
 import type {
   AssistantBlock,
   AssistantMessage,
+  Compact,
+  CompactReason,
+  CompactResult,
   Llm,
   LlmChunk,
   Loop,
@@ -16,8 +19,10 @@ export function createLoop(deps: {
   emit: (topic: string, payload?: unknown) => void;
   getLlm: () => Llm;
   getTools: () => Tools;
+  getCompact?: () => Compact | undefined;
   initialMessages?: readonly Message[];
   persist?: (message: Message) => void;
+  persistCompaction?: (event: { summary: string; cutIndex: number }) => void;
 }): Loop {
   const messages: Message[] = [...(deps.initialMessages ?? [])];
   const push = (message: Message) => {
@@ -41,6 +46,8 @@ export function createLoop(deps: {
           const tools = deps.getTools().list();
           const assistant = await consumeStream({
             llm: deps.getLlm(),
+            compact: deps.getCompact?.(),
+            persistCompaction: deps.persistCompaction,
             messages,
             tools,
             signal,
@@ -65,11 +72,65 @@ export function createLoop(deps: {
 
 async function consumeStream(input: {
   llm: Llm;
+  compact?: Compact;
+  persistCompaction?: (event: { summary: string; cutIndex: number }) => void;
   messages: readonly Message[];
   tools: readonly Tool[];
   signal?: AbortSignal;
   emit: (topic: string, payload?: unknown) => void;
 }): Promise<AssistantMessage> {
+  const original = input.messages;
+  const first = await applyCompact(input.compact, original, "threshold");
+  noteCompaction(first, input.persistCompaction);
+  try {
+    return await drainStream(input, first.messages);
+  } catch (error) {
+    if (!isContextOverflowError(error) || !input.compact) {
+      throw error;
+    }
+    const overflow = await applyCompact(input.compact, original, "overflow");
+    if (!overflow.shortened || !isShorter(overflow.messages, original)) {
+      throw error;
+    }
+    noteCompaction(overflow, input.persistCompaction);
+    return await drainStream(input, overflow.messages);
+  }
+}
+
+async function applyCompact(
+  compact: Compact | undefined,
+  messages: readonly Message[],
+  reason: CompactReason,
+): Promise<CompactResult> {
+  if (!compact) {
+    return { messages, shortened: false };
+  }
+  return await compact.compact(messages, reason);
+}
+
+function noteCompaction(
+  result: CompactResult,
+  persist?: (event: { summary: string; cutIndex: number }) => void,
+) {
+  if (!result.shortened || result.summary === undefined || result.cutIndex === undefined) {
+    return;
+  }
+  persist?.({ summary: result.summary, cutIndex: result.cutIndex });
+}
+
+function isShorter(view: readonly Message[], original: readonly Message[]): boolean {
+  return JSON.stringify(view).length < JSON.stringify(original).length;
+}
+
+async function drainStream(
+  input: {
+    llm: Llm;
+    tools: readonly Tool[];
+    signal?: AbortSignal;
+    emit: (topic: string, payload?: unknown) => void;
+  },
+  messages: readonly Message[],
+): Promise<AssistantMessage> {
   const blocks: AssistantBlock[] = [];
   const tools: ToolDefinition[] = input.tools.map(({ name, description, parameters }) => ({
     name,
@@ -78,7 +139,7 @@ async function consumeStream(input: {
   }));
 
   for await (const chunk of input.llm.stream({
-    messages: input.messages,
+    messages,
     tools,
     signal: input.signal,
   })) {

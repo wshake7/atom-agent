@@ -1,5 +1,6 @@
 import { expect, test } from "vite-plus/test";
 import cliPkg from "../package.json" with { type: "json" };
+import compactPkg from "atom-compact/package.json" with { type: "json" };
 import kernelPkg from "atom-kernel/package.json" with { type: "json" };
 import llmPkg from "atom-llm/package.json" with { type: "json" };
 import loopPkg from "atom-loop/package.json" with { type: "json" };
@@ -23,7 +24,16 @@ function atomWorkspaceDeps(pkg: PkgJson): string[] {
 }
 
 test("工作区包名都以 atom- 为前缀", () => {
-  for (const pkg of [kernelPkg, loopPkg, llmPkg, toolsPkg, mcpPkg, sessionPkg, cliPkg]) {
+  for (const pkg of [
+    kernelPkg,
+    loopPkg,
+    llmPkg,
+    toolsPkg,
+    mcpPkg,
+    sessionPkg,
+    compactPkg,
+    cliPkg,
+  ]) {
     expect(pkg.name.startsWith("atom-")).toBe(true);
   }
 });
@@ -35,7 +45,9 @@ test("依赖方向：内核独立，插件只依赖内核，CLI 依赖内核与�
   expect(atomWorkspaceDeps(toolsPkg)).toEqual(["atom-kernel"]);
   expect(atomWorkspaceDeps(mcpPkg)).toEqual(["atom-kernel"]);
   expect(atomWorkspaceDeps(sessionPkg)).toEqual(["atom-kernel"]);
+  expect(atomWorkspaceDeps(compactPkg)).toEqual(["atom-kernel"]);
   expect(atomWorkspaceDeps(cliPkg)).toEqual([
+    "atom-compact",
     "atom-kernel",
     "atom-llm",
     "atom-loop",

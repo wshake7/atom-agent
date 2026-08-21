@@ -22,7 +22,7 @@ export interface Context {
   get(slot: string): unknown;
 }
 
-export type OfficialSlot = "loop" | "tools" | "llm" | "session";
+export type OfficialSlot = "loop" | "tools" | "llm" | "compact" | "session";
 
 /** 匿名事件总线原语。业务事件名不属于内核。 */
 export interface EventBus {

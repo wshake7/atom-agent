@@ -89,6 +89,46 @@ function sseDelta(content: string): string {
   return `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`;
 }
 
+test("提供商上下文溢出被译成可识别失败面，不加方法", async () => {
+  const server = createServer((req, res) => {
+    void (async () => {
+      await drain(req);
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: { code: "context_length_exceeded" } }));
+    })();
+  });
+  await new Promise<void>((resolve) => {
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address() as AddressInfo;
+  try {
+    const { llm } = await loadLlm({
+      apiKey: "test-key",
+      baseUrl: `http://127.0.0.1:${address.port}`,
+      model: "dummy",
+    });
+    expect(Object.keys(llm).sort()).toEqual(["stream"]);
+    await expect(async () => {
+      for await (const _chunk of llm.stream({
+        messages: [{ role: "user", content: "长" }],
+        tools: [],
+      })) {
+        /* 只要失败面 */
+      }
+    }).rejects.toMatchObject({ name: "ContextOverflowError" });
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+  }
+});
+
 test("经宿主装上默认 llm 插件后能取到可 stream 的 llm 槽", async () => {
   const host = createPluginHost();
   await host.load(plugin);

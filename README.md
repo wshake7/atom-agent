@@ -93,7 +93,7 @@ node apps/atom-cli/src/cli.ts --session <id>
 node apps/atom-cli/src/cli.ts --sessions
 ```
 
-- 默认装上 `atom-llm`、`atom-tools`、`atom-mcp`、`atom-session`、`atom-loop`。
+- 默认装上 `atom-llm`、`atom-tools`、`atom-mcp`、`atom-session`、`atom-compact`、`atom-loop`。
 - `--no-tools` 关掉默认 coding 工具包。没有 `--mcp` 时会装一颗空 `tools` 表，循环仍能跑纯对话。
 - `--mcp` 及其后参数视为一个 stdio MCP server 的 command + args，该 server 的 tools 会登记进 `tools` 槽。
 - 裸启动永远是新会话。`--resume` 打开当前 cwd 最近一次；`--session <id>` 按 id 打开；`--sessions` 列出后退出。
@@ -137,6 +137,7 @@ packages/atom-llm/      # 默认模型端口
 packages/atom-tools/    # 默认工具包
 packages/atom-mcp/      # MCP 工具桥
 packages/atom-session/  # 会话日志
+packages/atom-compact/  # 压缩（只读视图）
 docs/adr/               # 架构决策
 CONTEXT.md              # 领域用语
 ```
