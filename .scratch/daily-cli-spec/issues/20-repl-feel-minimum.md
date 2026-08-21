@@ -19,4 +19,4 @@
 
 实现落在 `atom-cli` REPL：bracketed paste 合成提交单位、进程内输入历史、SIGINT 接到 `loop.prompt` 的 Abort、空闲主提示斜杠最小集。`/skill` 读装配清单立刻 prompt；`/model` 只改本进程 `llm.model` 并写用户层 `settings.json`。验收：`apps/atom-cli/tests/repl-feel.test.ts` + 更新后的 `streaming-repl.test.ts`。
 
-后记：名单补 `/skills`、`/mcps`（只读清单，不是 `/mcp` 改配置）。空闲 SIGINT 与 `/exit` 均退出进程（pause stdin）。Skill 清单每次现扫。
+后记：名单补 `/skills`、`/mcps`（只读清单，不是 `/mcp` 改配置）。空闲 SIGINT 与 `/exit` 均退出进程（pause stdin）。Skill 清单每次现扫。显式激活写法改为 `/skill:<id>`（后面文本仍接正文）。

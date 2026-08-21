@@ -415,26 +415,29 @@ async function handleSlash(input: {
       }
       return "handled";
     }
-    case "skill": {
-      const name = rest.split(/\s+/, 1)[0] ?? "";
-      const remainder = name.length === 0 ? "" : rest.slice(name.length).trim();
-      if (!name) {
-        input.write("/skill 需要 name\n");
-        return "handled";
-      }
-      const entry = input.skills.find((skill) => skill.name === name);
-      if (!entry) {
-        input.write(`未知 Skill: ${name}\n`);
-        return "handled";
-      }
-      const prompt = remainder.length > 0 ? `${entry.body}\n${remainder}` : entry.body;
-      return { prompt };
-    }
+    case "skill":
+      input.write("/skill 需要 /skill:<id>\n");
+      return "handled";
     case "model":
       return handleModelSlash(input, rest);
-    default:
+    default: {
+      if (command.startsWith("skill:")) {
+        const id = command.slice("skill:".length);
+        if (!id) {
+          input.write("/skill 需要 /skill:<id>\n");
+          return "handled";
+        }
+        const entry = input.skills.find((skill) => skill.name === id);
+        if (!entry) {
+          input.write(`未知 Skill: ${id}\n`);
+          return "handled";
+        }
+        const prompt = rest.length > 0 ? `${entry.body}\n${rest}` : entry.body;
+        return { prompt };
+      }
       input.write(`未知命令: /${command || rest}\n`);
       return "handled";
+    }
   }
 }
 

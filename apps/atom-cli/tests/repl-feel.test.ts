@@ -106,7 +106,7 @@ const slashRoster = [
   "/resume",
   "/session <id>",
   "/sessions",
-  "/skill <name>",
+  "/skill:<id>",
   "/skills",
   "/mcps",
   "/model",
@@ -388,7 +388,7 @@ test("输入历史只存空闲主提示原始行，不含 ASK，不含 Skill 展
   const { stdout, text } = memoryStdout();
   const lines = createLineReader(
     Readable.from(
-      ["问我\n", "ask-secret\n", "主二\n", "\x1b[A\n", "/skill missing\n", "\x1b[A\n", "/exit\n"],
+      ["问我\n", "ask-secret\n", "主二\n", "\x1b[A\n", "/skill:missing\n", "\x1b[A\n", "/exit\n"],
       { encoding: "utf8" },
     ),
   );
@@ -448,7 +448,7 @@ test("/skill 命中立刻 prompt，未知名报错不进循环", async () => {
       loopPlugin,
     ],
     skills: [{ name: "demo", description: "d", body: "BODY" }],
-    stdin: Readable.from(["/skill missing\n", "/skill demo extra\n", "/exit\n"], {
+    stdin: Readable.from(["/skill:missing\n", "/skill:demo extra\n", "/exit\n"], {
       encoding: "utf8",
     }),
     stdout,

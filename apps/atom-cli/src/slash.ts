@@ -4,7 +4,7 @@ export const SLASH_HELP = [
   "/resume",
   "/session <id>",
   "/sessions",
-  "/skill <name>",
+  "/skill:<id>",
   "/skills",
   "/mcps",
   "/model",

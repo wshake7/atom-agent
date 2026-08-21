@@ -118,7 +118,7 @@ REPL 会订阅循环事件：助手文本流式写出；工具调用打印 `[工
 | `/resume`       | 打开当前 cwd 最近一次会话                                                                                                                                          |
 | `/session <id>` | 按 id 打开会话                                                                                                                                                     |
 | `/sessions`     | 列出会话                                                                                                                                                           |
-| `/skill <name>` | 把该 Skill 正文立刻交给循环（name 后的文本接在正文后面）                                                                                                           |
+| `/skill:<id>`   | 把该 Skill 正文立刻交给循环（id 后的文本接在正文后面）                                                                                                             |
 | `/skills`       | 列出全部 Skill：name、desc、状态（`active` / `overridden`）、级别（`user` / `project` / `local`）、地址（`SKILL.md` 路径）。每次现扫磁盘，进程启动后新加的也能看见 |
 | `/mcps`         | 列出已解析 MCP：name、desc、状态（`connected` / `disabled` / `not-enabled`）、级别、地址；已连接的再列出其 tools。改 sidecar 后需重启才会连上新 server             |
 | `/model`        | 打印或切换本会话模型标识（只写用户层 settings，不换 baseUrl / key）                                                                                                |
@@ -136,7 +136,7 @@ REPL 会订阅循环事件：助手文本流式写出；工具调用打印 `[工
 | `project` | git 根到 cwd 沿途（不含仅 cwd 的那一层）`.atom-agent/skills/`；cwd 就是 git 根时这一层也算 project |
 | `local`   | cwd 不是 git 根时，cwd 自己的 `.atom-agent/skills/`                                                |
 
-同名近 cwd 整颗替换。`/skills`、`/skill` 与 `skill` 工具每次现读这些根，不必为新增 Skill 重启 REPL。
+同名近 cwd 整颗替换。`/skills`、`/skill:<id>` 与 `skill` 工具每次现读这些根，不必为新增 Skill 重启 REPL。
 
 ### 配置层
 

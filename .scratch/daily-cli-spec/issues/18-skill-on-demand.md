@@ -17,4 +17,4 @@
 
 新增写死插件包 `atom-skill`：CLI `assemble` 扫搜索根叠出清单，加载器往 `tools` 登记一把 `skill({ name })`。`--no-tools` 不卸；deny `skill` 整把不登记。`/skill` 留给第 20 票。
 
-后记：加载器仍启动装一次，但 catalog 改为现扫。`/skills`、`/skill` 与 `skill` 工具每次读搜索根，不必为新增 `SKILL.md` 重启。
+后记：加载器仍启动装一次，但 catalog 改为现扫。`/skills`、`/skill:<id>` 与 `skill` 工具每次读搜索根，不必为新增 `SKILL.md` 重启。
