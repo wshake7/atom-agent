@@ -106,6 +106,7 @@
     "**/pnpm-lock.yaml",
     "**/cspell.json",
     ".agents/skills/**",
+    ".atom-agent/skills/**",
     ".claude/skills/**",
     ".grok/skills/**"
   ]
