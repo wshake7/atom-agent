@@ -66,6 +66,22 @@ _Avoid_: 装配, config 槽, 远程配置中心
 CLI 把配置叠成已解析的同进程模块列表并交给宿主加载。默认集合写死。宿主不读配置文件，也不做发现。本地 `plugins/` 扫描不在本图。
 _Avoid_: 配置, 内核发现, 插件市场, hooks
 
+**系统提示**:
+每轮送给模型、但不进入对话消息列表的身份与指令文本。由装配拼成一根字符串，交给模型端口；不是官方槽，也不落会话日志。
+_Avoid_: system agent, 子 agent, 第四种 role, 把提示叫成插件或 Skill
+
+**默认模板**:
+系统提示里由装配写出的内置正文：身份、当前工具名（可带一行摘要）、guidelines。可被 `SYSTEM.md` / `--system-prompt` 整份替换。不含 APPEND、`AGENTS.md`、Skill 清单、cwd。
+_Avoid_: 把整根系统提示叫成默认模板, promptSnippet, 把 Skill 清单或 cwd 算进默认模板
+
+**系统提示文件**:
+用来替换或追加默认模板的 markdown：`SYSTEM.md` 替换整份默认模板，`APPEND_SYSTEM.md` 追加。不是配置 JSON，不是 Skill，也不替代 `AGENTS.md`。
+_Avoid_: 把 AGENTS.md 叫成系统提示文件, 仓库根裸 SYSTEM.md
+
+**AGENTS.md**:
+追加进系统提示的项目指令文件。不替换默认模板，不是系统提示文件。本阶段不把 `CLAUDE.md` 当它的别名。
+_Avoid_: 系统提示文件, CLAUDE.md 别名
+
 **本机覆盖**:
 某仓库内不提交的配置层（`settings.local.json` / `mcp.local.json`）。不是用户级默认，也不是可共享的项目配置。
 _Avoid_: Claude 的 MCP local（写在家目录、按项目路径存）

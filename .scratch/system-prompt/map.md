@@ -8,7 +8,7 @@ atom 日常 CLI 的默认回合把由 **装配** 拼成的 **系统提示** 经�
 
 ## Notes
 
-- 领域：日常 CLI 产品面的系统提示。术语以根目录 `CONTEXT.md` 为准（已加 **系统提示** / **系统提示文件**）；新词落地时用 domain-modeling 当场改术语表。
+- 领域：日常 CLI 产品面的系统提示。术语以根目录 `CONTEXT.md` 为准（已加 **系统提示** / **默认模板** / **系统提示文件**）；新词落地时用 domain-modeling 当场改术语表。
 - 每轮决策票默认同时用 grilling 与 domain-modeling；事实票用 research。
 - 全程中文。指票用标题，不用裸编号。
 - 本图只做决策，不实现。实现是图走完之后的另一次努力。目的地是落地改动，所以决策必须细到能直接开工。
@@ -21,13 +21,10 @@ atom 日常 CLI 的默认回合把由 **装配** 拼成的 **系统提示** 经�
 <!-- 索引：每条已关闭票一行 gist + 链接；细节只活在票里 -->
 
 - [pi 系统提示文件的搜索与合并](./issues/01-pi-system-prompt-files.md) — 默认模板或 SYSTEM.md 二选一，再 append、AGENTS 链、需 read 的 Skill catalog、cwd；JSONL 不存这根字符串
+- [Atom 系统提示文件的搜索根与叠法](./issues/02-atom-prompt-file-search.md) — 用户根+`.atom-agent/`：SYSTEM 近处 XOR 整份默认模板，APPEND 远→近全追加；裸 AGENTS.md 同序全追加（不认 CLAUDE.md）；argv 两开关；启动读一次
+- [默认正文骨架](./issues/03-default-prompt-skeleton.md) — 默认模板=身份+工具表+guidelines；XOR 后 APPEND→AGENTS→Skill XML→cwd；无日期；默认工具 description 改英文
 
 ## Not yet specified
-
-- 工具 guidelines（pi 默认正文里的「先 read 再 edit」一类）算不算默认模板的一部分，还是只列工具名
-- 项目链上多份 `AGENTS.md` 的具体走法，在文件搜索票拍板前只知道「要有文件覆盖」
-- 改系统提示文件是否必须重启（日常 CLI 配置是启动读一次；Skill 清单却是现扫）——挂在重建票之后才锐
-- Prompt templates / themes（pi 有；本图目的地未点名）
 
 ## Out of scope
 
@@ -38,3 +35,4 @@ atom 日常 CLI 的默认回合把由 **装配** 拼成的 **系统提示** 经�
 - 本图内写生产代码
 - 把 MCP 工具描述塞进系统提示
 - 差分 TUI、权限弹窗、记忆库、可嵌入 Runtime、多智能体
+- Prompt templates / themes（pi 的 `/name` 用户提示文件，不进系统提示拼装）
