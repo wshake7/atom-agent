@@ -1,6 +1,20 @@
 import type { ResolvedPluginModule } from "atom-kernel";
 import { createLoop } from "./create-loop.ts";
-import type { Compact, Llm, Message, Tools } from "./types.ts";
+import type { Compact, Llm, Message, ToolDefinition, Tools } from "./types.ts";
+
+function resolveSystemPrompt(
+  provided: unknown,
+  input: { tools: readonly ToolDefinition[] },
+): string | undefined {
+  if (typeof provided === "function") {
+    const resolved = (provided as (input: { tools: readonly ToolDefinition[] }) => unknown)(input);
+    return typeof resolved === "string" && resolved.length > 0 ? resolved : undefined;
+  }
+  if (typeof provided === "string" && provided.length > 0) {
+    return provided;
+  }
+  return undefined;
+}
 
 export {
   ContextOverflowError,
@@ -51,6 +65,7 @@ export const plugin = {
         getLlm: () => ctx.get("llm") as Llm,
         getTools: () => ctx.get("tools") as Tools,
         getCompact: () => ctx.get("compact") as Compact | undefined,
+        getSystemPrompt: (input) => resolveSystemPrompt(ctx.get("systemPrompt"), input),
         initialMessages: log?.messages,
         persist: log?.append ? (message) => log.append?.(message) : undefined,
         persistCompaction: log?.appendCompaction

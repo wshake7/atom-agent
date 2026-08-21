@@ -66,7 +66,9 @@ test("默认装配占官方槽：循环、真 llm 模块、默认工具包；MCP
     "ASK",
     "skill",
   ]);
-  expect(tools?.list().find((tool) => tool.name === "skill")?.description).toContain("无可用");
+  expect(tools?.list().find((tool) => tool.name === "skill")?.description).toContain(
+    "No skills are currently available",
+  );
   expect(host.context.get("session")).toBeDefined();
   expect(host.context.get("compact")).toBeDefined();
   expect(host.context.get("skills")).toBeUndefined();
@@ -83,7 +85,7 @@ test("关掉默认工具包后循环看不到 read/write 等工具，Skill 加�
     | { list(): { name: string; description?: string }[] }
     | undefined;
   expect(tools?.list().map((tool) => tool.name)).toEqual(["skill"]);
-  expect(tools?.list()[0]?.description).toContain("无可用");
+  expect(tools?.list()[0]?.description).toContain("No skills are currently available");
   expect(host.context.get("loop")).toBeDefined();
 });
 

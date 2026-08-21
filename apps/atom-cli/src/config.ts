@@ -59,6 +59,11 @@ export function mergeCwdEnv(cwd: string, env: NodeJS.ProcessEnv): NodeJS.Process
   return merged;
 }
 
+export function projectChain(cwd: string): string[] {
+  const resolved = resolve(cwd);
+  return projectDirs(resolved, findGitRoot(resolved));
+}
+
 export function userRoot(env: NodeJS.ProcessEnv): string {
   const home = env.ATOM_AGENT_HOME;
   if (typeof home === "string" && home.length > 0) {

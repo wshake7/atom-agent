@@ -40,6 +40,7 @@ export interface StreamChatCompletionsInput {
   readonly baseUrl: string;
   readonly model: string;
   readonly messages: readonly CompatMessage[];
+  readonly systemPrompt?: string;
   readonly tools?: readonly CompatToolDefinition[];
   readonly signal?: AbortSignal;
 }
@@ -57,7 +58,7 @@ export async function* streamChatCompletions(
     body: JSON.stringify({
       model: input.model,
       stream: true,
-      messages: input.messages.map(toProviderMessage),
+      messages: toProviderMessages(input.systemPrompt, input.messages),
       tools: input.tools && input.tools.length > 0 ? input.tools.map(toProviderTool) : undefined,
     }),
     signal: input.signal,
@@ -126,6 +127,17 @@ function isContextOverflow(status: number, detail: string): boolean {
     text.includes("maximum context") ||
     text.includes("prompt is too long")
   );
+}
+
+function toProviderMessages(
+  systemPrompt: string | undefined,
+  messages: readonly CompatMessage[],
+): Record<string, unknown>[] {
+  const translated = messages.map(toProviderMessage);
+  if (typeof systemPrompt === "string" && systemPrompt.length > 0) {
+    return [{ role: "system", content: systemPrompt }, ...translated];
+  }
+  return translated;
 }
 
 function toProviderMessage(message: CompatMessage): Record<string, unknown> {

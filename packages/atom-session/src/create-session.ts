@@ -175,7 +175,7 @@ function memoryStore(): Store {
       return newest(summaries(logs.values()), cwd)?.id;
     },
     list() {
-      return summaries(logs.values());
+      return summaries(logs.values()).map(publicSummary);
     },
   };
 }
@@ -216,7 +216,7 @@ function fileStore(root: string): Store {
       return newest(scan(dir), cwd)?.id;
     },
     list() {
-      return scan(dir);
+      return scan(dir).map(publicSummary);
     },
   };
 }
@@ -245,11 +245,11 @@ function parseLog(raw: string): StoredLog | undefined {
   return { id: meta.id, cwd: meta.cwd, createdAt: meta.createdAt, records };
 }
 
-function scan(dir: string): { id: string; cwd: string; updatedAt: string }[] {
+function scan(dir: string): { id: string; cwd: string; updatedAt: string; createdAt: string }[] {
   if (!existsSync(dir)) {
     return [];
   }
-  const items: { id: string; cwd: string; updatedAt: string }[] = [];
+  const items: { id: string; cwd: string; updatedAt: string; createdAt: string }[] = [];
   for (const name of readdirSync(dir)) {
     if (!name.endsWith(".jsonl")) {
       continue;
@@ -263,23 +263,43 @@ function scan(dir: string): { id: string; cwd: string; updatedAt: string }[] {
   return items;
 }
 
-function summaries(logs: Iterable<StoredLog>): { id: string; cwd: string; updatedAt: string }[] {
+function summaries(
+  logs: Iterable<StoredLog>,
+): { id: string; cwd: string; updatedAt: string; createdAt: string }[] {
   return [...logs].map(summary);
 }
 
-function summary(stored: StoredLog): { id: string; cwd: string; updatedAt: string } {
+function publicSummary(item: { id: string; cwd: string; updatedAt: string }) {
+  return { id: item.id, cwd: item.cwd, updatedAt: item.updatedAt };
+}
+
+function summary(stored: StoredLog): {
+  id: string;
+  cwd: string;
+  updatedAt: string;
+  createdAt: string;
+} {
   return {
     id: stored.id,
     cwd: stored.cwd,
     updatedAt: stored.records.at(-1)?.timestamp ?? stored.createdAt,
+    createdAt: stored.createdAt,
   };
 }
 
 function newest(
-  items: readonly { id: string; cwd: string; updatedAt: string }[],
+  items: readonly { id: string; cwd: string; updatedAt: string; createdAt: string }[],
   cwd: string,
-): { id: string; cwd: string; updatedAt: string } | undefined {
+): { id: string; cwd: string; updatedAt: string; createdAt: string } | undefined {
   return items
     .filter((item) => item.cwd === cwd)
-    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0))[0];
+    .sort((a, b) => {
+      if (a.updatedAt !== b.updatedAt) {
+        return a.updatedAt < b.updatedAt ? 1 : -1;
+      }
+      if (a.createdAt !== b.createdAt) {
+        return a.createdAt < b.createdAt ? 1 : -1;
+      }
+      return a.id < b.id ? 1 : -1;
+    })[0];
 }

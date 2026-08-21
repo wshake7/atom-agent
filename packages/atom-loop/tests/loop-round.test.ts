@@ -15,15 +15,23 @@ import type {
 
 function fakeLlm(
   replies: ((messages: readonly Message[]) => LlmChunk[] | Promise<LlmChunk[]>)[],
-): Llm & { readonly received: readonly (readonly Message[])[] } {
+): Llm & {
+  readonly received: readonly (readonly Message[])[];
+  readonly systemPrompts: readonly (string | undefined)[];
+} {
   const received: Message[][] = [];
+  const systemPrompts: (string | undefined)[] = [];
   return {
     get received() {
       return received;
     },
-    async *stream({ messages, signal }) {
+    get systemPrompts() {
+      return systemPrompts;
+    },
+    async *stream({ messages, systemPrompt, signal }) {
       const index = received.length;
       received.push(messages.map((message) => message));
+      systemPrompts.push(systemPrompt);
       const reply = replies[index];
       if (!reply) {
         throw new Error(`假 llm 没有第 ${index} 次回复`);
@@ -61,6 +69,7 @@ async function loadRound(
       appendCompaction?(event: { summary: string; cutIndex: number }): void;
     };
     compact?: Compact;
+    systemPrompt?: string | ((input: { tools: readonly { name: string }[] }) => string | undefined);
   },
 ) {
   const host = createPluginHost();
@@ -103,6 +112,15 @@ async function loadRound(
       id: "fake-compact",
       apply(ctx) {
         ctx.provide("compact", compact);
+      },
+    });
+  }
+  if (extras?.systemPrompt !== undefined) {
+    const systemPrompt = extras.systemPrompt;
+    await host.load({
+      id: "fake-system-prompt",
+      apply(ctx) {
+        ctx.provide("systemPrompt", systemPrompt);
       },
     });
   }
@@ -710,4 +728,67 @@ test("溢出恢复最多再打一枪，第二次溢出不再 compact", async () 
   );
   expect(compact.calls.map((call) => call.reason)).toEqual(["threshold", "overflow"]);
   expect(llm.received).toHaveLength(2);
+});
+
+test("未点名键上的系统提示随 LlmRequest 送给模型，不进三角消息、会话日志或 compact", async () => {
+  const stored: Message[] = [];
+  const compact = recordingCompact((messages) => ({ messages, shortened: false }));
+  const llm = fakeLlm([() => [{ type: "text", text: "好" }]]);
+  const { loop } = await loadRound(
+    llm,
+    fakeTools([
+      {
+        name: "read",
+        async execute() {
+          return "";
+        },
+      },
+    ]),
+    {
+      compact,
+      systemPrompt: "You are atom.",
+      session: {
+        messages: stored,
+        append(message) {
+          stored.push(message);
+        },
+      },
+    },
+  );
+  await loop.prompt("嗨");
+  expect(llm.systemPrompts).toEqual(["You are atom."]);
+  expect(llm.received[0]).toEqual([{ role: "user", content: "嗨" }]);
+  expect(
+    loop.messages.every((message) => ["user", "assistant", "toolResult"].includes(message.role)),
+  ).toBe(true);
+  expect(
+    stored.every((message) => ["user", "assistant", "toolResult"].includes(message.role)),
+  ).toBe(true);
+  expect(compact.calls[0]?.messages).toEqual([{ role: "user", content: "嗨" }]);
+});
+
+test("空串或未提供时 LlmRequest 省略 systemPrompt；函数每次 stream 现取", async () => {
+  const omitted = fakeLlm([() => [{ type: "text", text: "无" }]]);
+  await (await loadRound(omitted, fakeTools([]))).loop.prompt("嗨");
+  expect(omitted.systemPrompts).toEqual([undefined]);
+
+  const empty = fakeLlm([() => [{ type: "text", text: "空" }]]);
+  await (await loadRound(empty, fakeTools([]), { systemPrompt: "" })).loop.prompt("嗨");
+  expect(empty.systemPrompts).toEqual([undefined]);
+
+  const seen: string[][] = [];
+  const live = fakeLlm([
+    () => [{ type: "text", text: "一" }],
+    () => [{ type: "text", text: "二" }],
+  ]);
+  const { loop } = await loadRound(live, fakeTools([]), {
+    systemPrompt: ({ tools }) => {
+      seen.push(tools.map((tool) => tool.name));
+      return `n=${seen.length}`;
+    },
+  });
+  await loop.prompt("一");
+  await loop.prompt("二");
+  expect(live.systemPrompts).toEqual(["n=1", "n=2"]);
+  expect(seen).toEqual([[], []]);
 });

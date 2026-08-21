@@ -63,10 +63,10 @@ export function createToolsRegistry(initial: readonly Tool[] = []): Tools {
 
 function skillDescription(catalog: readonly SkillEntry[]): string {
   if (catalog.length === 0) {
-    return "按需加载 Skill 正文。当前无可用 Skill。";
+    return "Load a skill's instructions by name. No skills are currently available.";
   }
-  const listing = catalog.map((entry) => `${entry.name}：${entry.description}`).join("；");
-  return `按需加载 Skill 正文。可用：${listing}`;
+  const listing = catalog.map((entry) => `${entry.name}: ${entry.description}`).join("; ");
+  return `Load a skill's instructions by name. Available: ${listing}`;
 }
 
 function asRecord(args: unknown): Record<string, unknown> {

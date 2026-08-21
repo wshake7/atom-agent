@@ -20,6 +20,7 @@ type LlmChunk =
 interface LlmRequest {
   readonly messages: readonly Message[];
   readonly tools: readonly ToolDefinition[];
+  readonly systemPrompt?: string;
   readonly signal?: AbortSignal;
 }
 
@@ -64,6 +65,9 @@ export function createLlm(options: LlmPluginOptions = {}): Llm {
           messages: request.messages.map(toCompatMessage),
           tools: request.tools.map(toCompatTool),
           signal: request.signal,
+          ...(typeof request.systemPrompt === "string" && request.systemPrompt.length > 0
+            ? { systemPrompt: request.systemPrompt }
+            : {}),
         })) {
           yield toLlmChunk(chunk);
         }

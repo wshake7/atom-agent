@@ -20,6 +20,7 @@ export function createLoop(deps: {
   getLlm: () => Llm;
   getTools: () => Tools;
   getCompact?: () => Compact | undefined;
+  getSystemPrompt?: (input: { tools: readonly ToolDefinition[] }) => string | undefined;
   initialMessages?: readonly Message[];
   persist?: (message: Message) => void;
   persistCompaction?: (event: { summary: string; cutIndex: number }) => void;
@@ -48,6 +49,7 @@ export function createLoop(deps: {
             llm: deps.getLlm(),
             compact: deps.getCompact?.(),
             persistCompaction: deps.persistCompaction,
+            getSystemPrompt: deps.getSystemPrompt,
             messages,
             tools,
             signal,
@@ -74,6 +76,7 @@ async function consumeStream(input: {
   llm: Llm;
   compact?: Compact;
   persistCompaction?: (event: { summary: string; cutIndex: number }) => void;
+  getSystemPrompt?: (input: { tools: readonly ToolDefinition[] }) => string | undefined;
   messages: readonly Message[];
   tools: readonly Tool[];
   signal?: AbortSignal;
@@ -126,6 +129,7 @@ async function drainStream(
   input: {
     llm: Llm;
     tools: readonly Tool[];
+    getSystemPrompt?: (input: { tools: readonly ToolDefinition[] }) => string | undefined;
     signal?: AbortSignal;
     emit: (topic: string, payload?: unknown) => void;
   },
@@ -137,12 +141,15 @@ async function drainStream(
     description,
     parameters,
   }));
-
-  for await (const chunk of input.llm.stream({
+  const systemPrompt = input.getSystemPrompt?.({ tools });
+  const request = {
     messages,
     tools,
     signal: input.signal,
-  })) {
+    ...(typeof systemPrompt === "string" && systemPrompt.length > 0 ? { systemPrompt } : {}),
+  };
+
+  for await (const chunk of input.llm.stream(request)) {
     input.signal?.throwIfAborted();
     appendChunk(blocks, chunk, input.emit);
   }

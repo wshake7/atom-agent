@@ -14,6 +14,7 @@ import type { ToolsPluginOptions } from "atom-tools";
 import { parseArgv } from "./argv.ts";
 import { listSkills, mergeCwdEnv, skillSearchRoots, stackConfig, userRoot } from "./config.ts";
 import type { McpListing, SkillListing } from "./config.ts";
+import { composeSystemPrompt, livePromptSkills, loadPromptFiles } from "./system-prompt.ts";
 
 export interface DefaultAssemblyOptions {
   readonly llm?: boolean | LlmPluginOptions;
@@ -23,6 +24,7 @@ export interface DefaultAssemblyOptions {
   readonly toolDeny?: readonly string[];
   readonly skills?: SkillCatalog;
   readonly session?: boolean | SessionPluginOptions;
+  readonly getSystemPrompt?: (input: { tools: readonly { name: string }[] }) => string | undefined;
 }
 
 export interface AssembleInput {
@@ -77,6 +79,12 @@ export function assemble(input: AssembleInput): Assembly {
       : "new";
   const loadSkills = () => scanSkillCatalog(skillSearchRoots(input.cwd, env));
   const skills = loadSkills();
+  const promptFiles = loadPromptFiles({
+    cwd: input.cwd,
+    env,
+    systemPrompt: flags.systemPrompt,
+    appendSystemPrompts: flags.appendSystemPrompts,
+  });
   return {
     llm,
     skills,
@@ -95,6 +103,13 @@ export function assemble(input: AssembleInput): Assembly {
         start,
         stamp: () => ({ model: llm.model, provider: "atom-llm" }),
       },
+      getSystemPrompt: ({ tools: listed }) =>
+        composeSystemPrompt({
+          files: promptFiles,
+          tools: listed,
+          skills: livePromptSkills(input.cwd, env),
+          cwd: input.cwd,
+        }),
     }),
   };
 }
@@ -124,8 +139,25 @@ export function createDefaultPlugins(options: DefaultAssemblyOptions = {}): Reso
     );
   }
   plugins.push(createCompactPlugin());
-  plugins.push(loopPlugin);
+  plugins.push(withSystemPrompt(loopPlugin, options.getSystemPrompt));
   return plugins;
+}
+
+function withSystemPrompt(
+  module: ResolvedPluginModule,
+  getSystemPrompt: DefaultAssemblyOptions["getSystemPrompt"],
+): ResolvedPluginModule {
+  if (!getSystemPrompt) {
+    return module;
+  }
+  return {
+    id: module.id,
+    inject: module.inject,
+    apply(ctx) {
+      ctx.provide("systemPrompt", getSystemPrompt);
+      return module.apply(ctx);
+    },
+  };
 }
 
 export const defaultPlugins: readonly ResolvedPluginModule[] = createDefaultPlugins();

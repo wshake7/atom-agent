@@ -72,6 +72,51 @@ function deferred() {
   return { promise, resolve };
 }
 
+test("有 systemPrompt 时线上前置 role:system；空串省略且不进 CompatMessage", async () => {
+  const seen: unknown[] = [];
+  const server = await serveChatCompletions(
+    (res) => {
+      res.write(sseDelta({ content: "好" }));
+      res.write("data: [DONE]\n\n");
+    },
+    (info) => {
+      seen.push((info.body as { messages?: unknown }).messages);
+    },
+  );
+  try {
+    await collect({
+      apiKey: "k",
+      baseUrl: server.origin,
+      model: "m",
+      systemPrompt: "You are atom.",
+      messages: [{ role: "user", content: "嗨" }],
+    });
+    await collect({
+      apiKey: "k",
+      baseUrl: server.origin,
+      model: "m",
+      systemPrompt: "",
+      messages: [{ role: "user", content: "嗨" }],
+    });
+    await collect({
+      apiKey: "k",
+      baseUrl: server.origin,
+      model: "m",
+      messages: [{ role: "user", content: "嗨" }],
+    });
+    expect(seen).toEqual([
+      [
+        { role: "system", content: "You are atom." },
+        { role: "user", content: "嗨" },
+      ],
+      [{ role: "user", content: "嗨" }],
+      [{ role: "user", content: "嗨" }],
+    ]);
+  } finally {
+    await server.close();
+  }
+});
+
 test("录制的 chat/completions SSE 流出文本块", async () => {
   const server = await serveChatCompletions((res) => {
     res.write(sseDelta({ content: "你" }));

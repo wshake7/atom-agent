@@ -179,6 +179,48 @@ test("薄插件只信 options，不回落到 process.env", async () => {
   }
 });
 
+test("systemPrompt 译到兼容面；缺省不前置 system 消息", async () => {
+  const payloads: unknown[] = [];
+  const server = await serveChatCompletions(
+    (res) => {
+      res.write(sseDelta("ok"));
+      res.write("data: [DONE]\n\n");
+    },
+    (body) => {
+      payloads.push((body as { messages?: unknown }).messages);
+    },
+  );
+  try {
+    const { llm } = await loadLlm({
+      apiKey: "test-key",
+      baseUrl: server.origin,
+      model: "dummy",
+    });
+    for await (const _chunk of llm.stream({
+      messages: [{ role: "user", content: "一" }],
+      tools: [],
+      systemPrompt: "You are atom.",
+    })) {
+      /* 只要请求体 */
+    }
+    for await (const _chunk of llm.stream({
+      messages: [{ role: "user", content: "二" }],
+      tools: [],
+    })) {
+      /* 只要请求体 */
+    }
+    expect(payloads).toEqual([
+      [
+        { role: "system", content: "You are atom." },
+        { role: "user", content: "一" },
+      ],
+      [{ role: "user", content: "二" }],
+    ]);
+  } finally {
+    await server.close();
+  }
+});
+
 test("每次调用读当前三标量，改 model 不换 llm 槽", async () => {
   const models: string[] = [];
   const credentials = { apiKey: "test-key", baseUrl: "", model: "first" };

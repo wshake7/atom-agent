@@ -9,6 +9,8 @@ export interface CliFlags {
   readonly resume: boolean;
   readonly sessions: boolean;
   readonly sessionId?: string;
+  readonly systemPrompt?: string;
+  readonly appendSystemPrompts?: readonly string[];
 }
 
 const ATOM_FLAGS = new Set([
@@ -21,6 +23,8 @@ const ATOM_FLAGS = new Set([
   "--resume",
   "--session",
   "--sessions",
+  "--system-prompt",
+  "--append-system-prompt",
 ]);
 
 export function parseArgv(argv: readonly string[]): CliFlags {
@@ -31,6 +35,8 @@ export function parseArgv(argv: readonly string[]): CliFlags {
   let resume = false;
   let sessions = false;
   let sessionId: string | undefined;
+  let systemPrompt: string | undefined;
+  let appendSystemPrompts: string[] | undefined;
   const mcpServers: McpStdioServer[] = [];
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -69,6 +75,17 @@ export function parseArgv(argv: readonly string[]): CliFlags {
       i += 1;
       continue;
     }
+    if (arg === "--system-prompt") {
+      systemPrompt = takePromptValue(argv, i, "--system-prompt");
+      i += 1;
+      continue;
+    }
+    if (arg === "--append-system-prompt") {
+      appendSystemPrompts ??= [];
+      appendSystemPrompts.push(takePromptValue(argv, i, "--append-system-prompt"));
+      i += 1;
+      continue;
+    }
     if (arg === "--mcp") {
       const parsed = takeMcp(argv, i);
       upsertMcp(mcpServers, parsed.server);
@@ -80,12 +97,34 @@ export function parseArgv(argv: readonly string[]): CliFlags {
   if (resume && sessionId) {
     throw new Error("--resume 与 --session 不能同时使用");
   }
-  return { tools, mcpServers, model, baseUrl, apiKey, resume, sessions, sessionId };
+  return {
+    tools,
+    mcpServers,
+    model,
+    baseUrl,
+    apiKey,
+    resume,
+    sessions,
+    sessionId,
+    systemPrompt,
+    appendSystemPrompts,
+  };
 }
 
 function takeValue(argv: readonly string[], index: number, flag: string): string {
   const value = argv[index + 1];
   if (!value || ATOM_FLAGS.has(value)) {
+    throw new Error(`${flag} 需要值`);
+  }
+  return value;
+}
+
+function takePromptValue(argv: readonly string[], index: number, flag: string): string {
+  if (index + 1 >= argv.length) {
+    throw new Error(`${flag} 需要值`);
+  }
+  const value = argv[index + 1];
+  if (value === undefined || ATOM_FLAGS.has(value)) {
     throw new Error(`${flag} 需要值`);
   }
   return value;

@@ -84,6 +84,7 @@ export type LlmChunk =
 export interface LlmRequest {
   readonly messages: readonly Message[];
   readonly tools: readonly ToolDefinition[];
+  readonly systemPrompt?: string;
   readonly signal?: AbortSignal;
 }
 

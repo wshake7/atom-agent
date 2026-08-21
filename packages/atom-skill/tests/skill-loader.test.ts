@@ -61,7 +61,7 @@ test("空清单仍登记 skill 工具，description 写无可用，且不占 ski
   await host.load(defaultSkillPlugin);
   const tools = host.context.get("tools") as ToolsSlot;
   expect(tools.list().map((tool) => tool.name)).toEqual(["skill"]);
-  expect(tools.list()[0]?.description).toContain("无可用");
+  expect(tools.list()[0]?.description).toContain("No skills are currently available");
   expect(host.context.get("skills")).toBeUndefined();
 });
 
@@ -102,7 +102,7 @@ test("catalog 为函数时每次 list/execute 重新取清单", async () => {
   const skill = (host.context.get("tools") as ToolsSlot).list()[0];
   expect(skill?.description).toContain("review");
   catalog.splice(0, catalog.length);
-  expect(skill?.description).toContain("无可用");
+  expect(skill?.description).toContain("No skills are currently available");
   await expect(skill?.execute({ name: "review" })).rejects.toThrow("未知 Skill: review");
 });
 

@@ -11,6 +11,8 @@ test("无参数时默认开工具包、关 MCP 桥", () => {
     resume: false,
     sessions: false,
     sessionId: undefined,
+    systemPrompt: undefined,
+    appendSystemPrompts: undefined,
   });
 });
 
@@ -24,6 +26,8 @@ test("--no-tools 关掉默认工具包", () => {
     resume: false,
     sessions: false,
     sessionId: undefined,
+    systemPrompt: undefined,
+    appendSystemPrompts: undefined,
   });
 });
 
@@ -37,6 +41,8 @@ test("--mcp 打开桥并收下 name、command 与后续参数", () => {
     resume: false,
     sessions: false,
     sessionId: undefined,
+    systemPrompt: undefined,
+    appendSystemPrompts: undefined,
   });
 });
 
@@ -50,6 +56,8 @@ test("--mcp 可重复，同名整条替换", () => {
     resume: false,
     sessions: false,
     sessionId: undefined,
+    systemPrompt: undefined,
+    appendSystemPrompts: undefined,
   });
 });
 
@@ -63,6 +71,8 @@ test("--no-tools 可与 --mcp 组合，且 --model 仍可解析", () => {
     resume: false,
     sessions: false,
     sessionId: undefined,
+    systemPrompt: undefined,
+    appendSystemPrompts: undefined,
   });
 });
 
@@ -76,6 +86,8 @@ test("--model / --base-url / --api-key 收下值", () => {
     resume: false,
     sessions: false,
     sessionId: undefined,
+    systemPrompt: undefined,
+    appendSystemPrompts: undefined,
   });
 });
 
@@ -112,5 +124,32 @@ test("跳过参数分隔符 --", () => {
     resume: false,
     sessions: false,
     sessionId: undefined,
+    systemPrompt: undefined,
+    appendSystemPrompts: undefined,
   });
+});
+
+test("--system-prompt 收下字面量或空串；--append-system-prompt 可重复", () => {
+  expect(parseArgv(["--system-prompt", "You are atom."])).toMatchObject({
+    systemPrompt: "You are atom.",
+    appendSystemPrompts: undefined,
+  });
+  expect(parseArgv(["--system-prompt", ""])).toMatchObject({
+    systemPrompt: "",
+    appendSystemPrompts: undefined,
+  });
+  expect(
+    parseArgv([
+      "--append-system-prompt",
+      "a",
+      "--append-system-prompt",
+      "",
+      "--append-system-prompt",
+      "b",
+    ]),
+  ).toMatchObject({
+    systemPrompt: undefined,
+    appendSystemPrompts: ["a", "", "b"],
+  });
+  expect(() => parseArgv(["--system-prompt"])).toThrow("--system-prompt 需要值");
 });
