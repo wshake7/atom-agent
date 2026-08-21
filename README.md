@@ -2,11 +2,11 @@
 
 自研一套**极简、高扩展、可插拔**的 agent 系统，原则来自三家、实现是自己的，不 fork：
 
-| 要对齐的 | 落到本仓库 |
-| --- | --- |
-| **pi 的极简** | 循环小；TUI、默认工具、权限不焊进内核 |
+| 要对齐的                          | 落到本仓库                                                                                |
+| --------------------------------- | ----------------------------------------------------------------------------------------- |
+| **pi 的极简**                     | 循环小；TUI、默认工具、权限不焊进内核                                                     |
 | **DeepSeek Harness 的一切皆插件** | 宿主可换循环；能力按契约挂上。运行时是官方 [Cordis](https://github.com/cordiverse/cordis) |
-| **AgentScope 2.0 的企业级能力** | 可观测、会话、沙箱、可嵌入 Runtime、多智能体靠**加槽**长出，不预埋进核 |
+| **AgentScope 2.0 的企业级能力**   | 可观测、会话、沙箱、可嵌入 Runtime、多智能体靠**加槽**长出，不预埋进核                    |
 
 详见 [ADR-0008](docs/adr/0008-project-goal.md)。**v0** 只交付自己用的 coding CLI（流式 REPL、改当前仓库），用来钉死内核与插件契约；企业能力是后续阶段，不是「做完 REPL 项目就结束」。
 
@@ -35,14 +35,14 @@ atom-kernel（插件宿主）
     └── loop   ← atom-loop（一轮「模型 ↔ 工具」直到助手不再调工具或被 Abort）
 ```
 
-| 包 | 职责 |
-| --- | --- |
-| `packages/atom-kernel` | 进程内插件宿主：加载已解析同进程模块、Context 取槽、匿名事件 |
-| `packages/atom-loop` | 默认循环插件：三角消息（`user` / `assistant` / `toolResult`）、推理块回放、串行工具分发 |
-| `packages/atom-llm` | 默认 `llm` 适配器：流式、可 Abort；提供商方言不进槽合同 |
-| `packages/atom-tools` | 默认 `tools` 插件：工作树读写、编辑、shell、ripgrep、ASK |
-| `packages/atom-mcp` | MCP stdio 工具桥：把远端 tools 登记进已有 `tools` 槽 |
-| `apps/atom-cli` | 流式 REPL 与默认装配入口 |
+| 包                     | 职责                                                                                    |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| `packages/atom-kernel` | 进程内插件宿主：加载已解析同进程模块、Context 取槽、匿名事件                            |
+| `packages/atom-loop`   | 默认循环插件：三角消息（`user` / `assistant` / `toolResult`）、推理块回放、串行工具分发 |
+| `packages/atom-llm`    | 默认 `llm` 适配器：流式、可 Abort；提供商方言不进槽合同                                 |
+| `packages/atom-tools`  | 默认 `tools` 插件：工作树读写、编辑、shell、ripgrep、ASK                                |
+| `packages/atom-mcp`    | MCP stdio 工具桥：把远端 tools 登记进已有 `tools` 槽                                    |
+| `apps/atom-cli`        | 流式 REPL 与默认装配入口                                                                |
 
 决策记录在 [`docs/adr/`](docs/adr/)。领域用语见 [`CONTEXT.md`](CONTEXT.md)。
 
@@ -88,11 +88,15 @@ node apps/atom-cli/src/cli.ts
 node apps/atom-cli/src/cli.ts
 node apps/atom-cli/src/cli.ts --no-tools
 node apps/atom-cli/src/cli.ts --mcp <command> [args...]
+node apps/atom-cli/src/cli.ts --resume
+node apps/atom-cli/src/cli.ts --session <id>
+node apps/atom-cli/src/cli.ts --sessions
 ```
 
-- 默认装上 `atom-llm`、`atom-tools`、`atom-mcp`、`atom-loop`。
+- 默认装上 `atom-llm`、`atom-tools`、`atom-mcp`、`atom-session`、`atom-loop`。
 - `--no-tools` 关掉默认 coding 工具包。没有 `--mcp` 时会装一颗空 `tools` 表，循环仍能跑纯对话。
-- `--mcp` 及其后参数视为一个 stdio MCP server 的 command + args，该 server 的 tools 会登记进 `tools` 槽。`--mcp` 必须是最后一个选项。
+- `--mcp` 及其后参数视为一个 stdio MCP server 的 command + args，该 server 的 tools 会登记进 `tools` 槽。
+- 裸启动永远是新会话。`--resume` 打开当前 cwd 最近一次；`--session <id>` 按 id 打开；`--sessions` 列出后退出。
 
 REPL 会订阅循环事件：助手文本流式写出；工具调用打印 `[工具开始]` / `[工具结束]`；`ASK` 打印 `[问] …` 并读下一行作为答复。
 
@@ -111,17 +115,17 @@ const loop = host.context.get("loop");
 
 ## 开发
 
-| 命令 | 作用 |
-| --- | --- |
-| `vp i` / `just install` | 安装 monorepo 依赖 |
-| `vp run ready` | check + 全包测试 + 全包构建 |
-| `vp run -r test` | 各包测试 |
-| `vp run -r build` | 各包构建（`vp pack`） |
-| `vp check` | 格式、lint、类型检查 |
-| `just atom` | 启动默认 REPL |
-| `just clean` | 清理 `node_modules` / `dist` 等 |
+| 命令                    | 作用                            |
+| ----------------------- | ------------------------------- |
+| `vp i` / `just install` | 安装 monorepo 依赖              |
+| `vp run ready`          | check + 全包测试 + 全包构建     |
+| `vp run -r test`        | 各包测试                        |
+| `vp run -r build`       | 各包构建（`vp pack`）           |
+| `vp check`              | 格式、lint、类型检查            |
+| `just atom`             | 启动默认 REPL                   |
+| `just clean`            | 清理 `node_modules` / `dist` 等 |
 
-提交前 lefthook 会对暂存文件跑 `vp staged`。需要跳过时用 `LEFTHOOK=0` 或 `--no-verify`。
+提交前 lefthook 会对暂存文件跑 `vp staged` 和 cspell；push 前对源码/配置变更跑 `vp check`。需要跳过时用 `LEFTHOOK=0` 或 `--no-verify`。
 
 ## 仓库布局
 
@@ -132,6 +136,7 @@ packages/atom-loop/     # 默认循环
 packages/atom-llm/      # 默认模型端口
 packages/atom-tools/    # 默认工具包
 packages/atom-mcp/      # MCP 工具桥
+packages/atom-session/  # 会话日志
 docs/adr/               # 架构决策
 CONTEXT.md              # 领域用语
 ```

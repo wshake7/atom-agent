@@ -4,10 +4,12 @@ import type { LlmPluginOptions } from "atom-llm";
 import { plugin as loopPlugin } from "atom-loop";
 import { createMcpPlugin } from "atom-mcp";
 import type { McpPluginOptions, McpStdioServer } from "atom-mcp";
+import { createSessionPlugin } from "atom-session";
+import type { SessionPluginOptions } from "atom-session";
 import { createToolsPlugin } from "atom-tools";
 import type { ToolsPluginOptions } from "atom-tools";
 import { parseArgv } from "./argv.ts";
-import { mergeCwdEnv, stackConfig } from "./config.ts";
+import { mergeCwdEnv, stackConfig, userRoot } from "./config.ts";
 
 export interface DefaultAssemblyOptions {
   readonly llm?: boolean | LlmPluginOptions;
@@ -15,6 +17,7 @@ export interface DefaultAssemblyOptions {
   readonly mcpServers?: readonly McpStdioServer[];
   readonly toolAllow?: readonly string[];
   readonly toolDeny?: readonly string[];
+  readonly session?: boolean | SessionPluginOptions;
 }
 
 export interface AssembleInput {
@@ -78,6 +81,11 @@ export function assemble(input: AssembleInput): Assembly {
       : typeof input.tools === "object"
         ? input.tools
         : true;
+  const start: SessionPluginOptions["start"] = flags.sessionId
+    ? { id: flags.sessionId }
+    : flags.resume
+      ? "latest"
+      : "new";
   return {
     llm,
     plugins: createDefaultPlugins({
@@ -86,6 +94,12 @@ export function assemble(input: AssembleInput): Assembly {
       mcpServers: stacked.mcpServers,
       toolAllow: stacked.toolAllow,
       toolDeny: stacked.toolDeny,
+      session: {
+        root: userRoot(env),
+        cwd: input.cwd,
+        start,
+        stamp: () => ({ model: llm.model, provider: "atom-llm" }),
+      },
     }),
   };
 }
@@ -108,6 +122,13 @@ export function createDefaultPlugins(options: DefaultAssemblyOptions = {}): Reso
     options.mcpServers?.length ? ({ servers: options.mcpServers } satisfies McpPluginOptions) : {},
   );
   plugins.push(applyAllowDeny(mcp, options.toolAllow, options.toolDeny));
+  if (options.session !== false) {
+    plugins.push(
+      typeof options.session === "object"
+        ? createSessionPlugin(options.session)
+        : createSessionPlugin({ cwd: process.cwd() }),
+    );
+  }
   plugins.push(loopPlugin);
   return plugins;
 }

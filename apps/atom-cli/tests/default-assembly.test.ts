@@ -63,7 +63,7 @@ test("默认装配占官方槽：循环、真 llm 模块、默认工具包；MCP
     "rg",
     "ASK",
   ]);
-  expect(host.context.get("session")).toBeUndefined();
+  expect(host.context.get("session")).toBeDefined();
   expect(host.context.get("sandbox")).toBeUndefined();
   expect(host.context.get("resources")).toBeUndefined();
   expect(host.context.get("prompts")).toBeUndefined();

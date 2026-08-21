@@ -8,6 +8,9 @@ test("无参数时默认开工具包、关 MCP 桥", () => {
     model: undefined,
     baseUrl: undefined,
     apiKey: undefined,
+    resume: false,
+    sessions: false,
+    sessionId: undefined,
   });
 });
 
@@ -18,6 +21,9 @@ test("--no-tools 关掉默认工具包", () => {
     model: undefined,
     baseUrl: undefined,
     apiKey: undefined,
+    resume: false,
+    sessions: false,
+    sessionId: undefined,
   });
 });
 
@@ -28,6 +34,9 @@ test("--mcp 打开桥并收下 name、command 与后续参数", () => {
     model: undefined,
     baseUrl: undefined,
     apiKey: undefined,
+    resume: false,
+    sessions: false,
+    sessionId: undefined,
   });
 });
 
@@ -38,6 +47,9 @@ test("--mcp 可重复，同名整条替换", () => {
     model: undefined,
     baseUrl: undefined,
     apiKey: undefined,
+    resume: false,
+    sessions: false,
+    sessionId: undefined,
   });
 });
 
@@ -48,6 +60,9 @@ test("--no-tools 可与 --mcp 组合，且 --model 仍可解析", () => {
     model: "m",
     baseUrl: undefined,
     apiKey: undefined,
+    resume: false,
+    sessions: false,
+    sessionId: undefined,
   });
 });
 
@@ -58,7 +73,29 @@ test("--model / --base-url / --api-key 收下值", () => {
     model: "m",
     baseUrl: "https://x",
     apiKey: "k",
+    resume: false,
+    sessions: false,
+    sessionId: undefined,
   });
+});
+
+test("--resume / --session / --sessions 解析会话入口", () => {
+  expect(parseArgv(["--resume"])).toMatchObject({
+    resume: true,
+    sessions: false,
+    sessionId: undefined,
+  });
+  expect(parseArgv(["--session", "abc"])).toMatchObject({
+    resume: false,
+    sessions: false,
+    sessionId: "abc",
+  });
+  expect(parseArgv(["--sessions"])).toMatchObject({
+    resume: false,
+    sessions: true,
+    sessionId: undefined,
+  });
+  expect(() => parseArgv(["--resume", "--session", "abc"])).toThrow();
 });
 
 test("未知参数报错", () => {
@@ -72,5 +109,8 @@ test("跳过参数分隔符 --", () => {
     model: undefined,
     baseUrl: undefined,
     apiKey: undefined,
+    resume: false,
+    sessions: false,
+    sessionId: undefined,
   });
 });

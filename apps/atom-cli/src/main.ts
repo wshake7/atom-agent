@@ -1,5 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { createPluginHost } from "atom-kernel";
+import type { ResolvedPluginModule } from "atom-kernel";
+import type { Session } from "atom-session";
 import { parseArgv } from "./argv.ts";
 import { assemble } from "./assemble.ts";
 import { createLineReader, runRepl } from "./repl.ts";
@@ -38,6 +41,10 @@ export async function main(
           }
         : false,
     });
+    if (flags.sessions) {
+      await listSessions(assembly.plugins, stdout);
+      return;
+    }
     await runRepl({
       plugins: assembly.plugins,
       stdin,
@@ -47,5 +54,25 @@ export async function main(
     });
   } finally {
     lines.close();
+  }
+}
+
+async function listSessions(
+  plugins: readonly ResolvedPluginModule[],
+  stdout: { write(chunk: string): unknown },
+): Promise<void> {
+  const sessionPlugin = plugins.find((plugin) => plugin.id === "atom-session");
+  if (!sessionPlugin) {
+    return;
+  }
+  const host = createPluginHost();
+  const loaded = await host.load(sessionPlugin);
+  try {
+    const session = host.context.get("session") as Session | undefined;
+    for (const item of session?.list() ?? []) {
+      stdout.write(`${item.id}\t${item.cwd}\t${item.updatedAt}\n`);
+    }
+  } finally {
+    await loaded.unload();
   }
 }

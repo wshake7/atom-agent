@@ -16,8 +16,14 @@ export function createLoop(deps: {
   emit: (topic: string, payload?: unknown) => void;
   getLlm: () => Llm;
   getTools: () => Tools;
+  initialMessages?: readonly Message[];
+  persist?: (message: Message) => void;
 }): Loop {
-  const messages: Message[] = [];
+  const messages: Message[] = [...(deps.initialMessages ?? [])];
+  const push = (message: Message) => {
+    messages.push(message);
+    deps.persist?.(message);
+  };
 
   return {
     get messages() {
@@ -25,7 +31,7 @@ export function createLoop(deps: {
     },
     async prompt(text, options) {
       const signal = options?.signal;
-      messages.push({ role: "user", content: text });
+      push({ role: "user", content: text });
 
       while (true) {
         signal?.throwIfAborted();
@@ -40,11 +46,11 @@ export function createLoop(deps: {
             signal,
             emit: deps.emit,
           });
-          messages.push(assistant);
+          push(assistant);
           calls = assistant.content.filter((block) => block.type === "toolCall");
           for (const call of calls) {
             const result = await runTool(call, tools, signal, deps.emit);
-            messages.push(result);
+            push(result);
           }
         } finally {
           deps.emit(LOOP_EVENTS.turnEnd, {});

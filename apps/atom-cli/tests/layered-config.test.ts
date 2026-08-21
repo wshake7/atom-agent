@@ -111,6 +111,7 @@ test("用户层 settings 叠出三标量，宿主只吃已解析模块", async (
       "atom-llm",
       "atom-tools",
       "atom-mcp",
+      "atom-session",
       "atom-loop",
     ]);
     const { host, close } = await loadHost(assembly.plugins);
@@ -412,6 +413,7 @@ test("--no-tools 不装默认工具包，MCP 工具仍走名单", async () => {
     expect(assembly.plugins.map((plugin) => plugin.id)).toEqual([
       "atom-llm",
       "atom-mcp",
+      "atom-session",
       "atom-loop",
     ]);
     const { host, close } = await loadHost(assembly.plugins);
@@ -441,6 +443,7 @@ test("配置没有 plugins 路径表，不扫 plugins 目录，也没有 provide
       "atom-llm",
       "atom-tools",
       "atom-mcp",
+      "atom-session",
       "atom-loop",
     ]);
     expect(assembly.llm.model).toBe(userLlm.model);

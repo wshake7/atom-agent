@@ -6,15 +6,31 @@ export interface CliFlags {
   readonly model?: string;
   readonly baseUrl?: string;
   readonly apiKey?: string;
+  readonly resume: boolean;
+  readonly sessions: boolean;
+  readonly sessionId?: string;
 }
 
-const ATOM_FLAGS = new Set(["--", "--no-tools", "--model", "--base-url", "--api-key", "--mcp"]);
+const ATOM_FLAGS = new Set([
+  "--",
+  "--no-tools",
+  "--model",
+  "--base-url",
+  "--api-key",
+  "--mcp",
+  "--resume",
+  "--session",
+  "--sessions",
+]);
 
 export function parseArgv(argv: readonly string[]): CliFlags {
   let tools = true;
   let model: string | undefined;
   let baseUrl: string | undefined;
   let apiKey: string | undefined;
+  let resume = false;
+  let sessions = false;
+  let sessionId: string | undefined;
   const mcpServers: McpStdioServer[] = [];
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -23,6 +39,19 @@ export function parseArgv(argv: readonly string[]): CliFlags {
     }
     if (arg === "--no-tools") {
       tools = false;
+      continue;
+    }
+    if (arg === "--resume") {
+      resume = true;
+      continue;
+    }
+    if (arg === "--sessions") {
+      sessions = true;
+      continue;
+    }
+    if (arg === "--session") {
+      sessionId = takeValue(argv, i, "--session");
+      i += 1;
       continue;
     }
     if (arg === "--model") {
@@ -48,7 +77,10 @@ export function parseArgv(argv: readonly string[]): CliFlags {
     }
     throw new Error(`未知参数: ${arg}`);
   }
-  return { tools, mcpServers, model, baseUrl, apiKey };
+  if (resume && sessionId) {
+    throw new Error("--resume 与 --session 不能同时使用");
+  }
+  return { tools, mcpServers, model, baseUrl, apiKey, resume, sessions, sessionId };
 }
 
 function takeValue(argv: readonly string[], index: number, flag: string): string {

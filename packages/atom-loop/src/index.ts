@@ -1,6 +1,6 @@
 import type { ResolvedPluginModule } from "atom-kernel";
 import { createLoop } from "./create-loop.ts";
-import type { Llm, Tools } from "./types.ts";
+import type { Llm, Message, Tools } from "./types.ts";
 
 export {
   LOOP_EVENTS,
@@ -27,6 +27,11 @@ export const plugin = {
   id: "atom-loop",
   inject: ["llm", "tools"],
   apply(ctx) {
+    const log = (
+      ctx.get("session") as
+        | { current?: { messages?: readonly Message[]; append?: (message: Message) => void } }
+        | undefined
+    )?.current;
     ctx.provide(
       "loop",
       createLoop({
@@ -35,6 +40,8 @@ export const plugin = {
         },
         getLlm: () => ctx.get("llm") as Llm,
         getTools: () => ctx.get("tools") as Tools,
+        initialMessages: log?.messages,
+        persist: log?.append ? (message) => log.append?.(message) : undefined,
       }),
     );
   },

@@ -41,7 +41,11 @@ function fakeTools(tools: readonly Tool[]): Tools {
   };
 }
 
-async function loadRound(llm: Llm, tools: Tools) {
+async function loadRound(
+  llm: Llm,
+  tools: Tools,
+  session?: { messages: Message[]; append(message: Message): void },
+) {
   const host = createPluginHost();
   await host.load({
     id: "fake-llm",
@@ -55,6 +59,23 @@ async function loadRound(llm: Llm, tools: Tools) {
       ctx.provide("tools", tools);
     },
   });
+  if (session) {
+    await host.load({
+      id: "fake-session",
+      apply(ctx) {
+        ctx.provide("session", {
+          current: {
+            id: "s1",
+            cwd: "/tmp",
+            get messages() {
+              return session.messages;
+            },
+            append: (message: Message) => session.append(message),
+          },
+        });
+      },
+    });
+  }
   await host.load(plugin);
   const loop = host.context.get("loop") as Loop | undefined;
   if (!loop) {
@@ -346,4 +367,90 @@ test("Abort 中止进行中的模型流，不把半截助手写进消息列表",
 
   expect(topics).toEqual(["start", "delta", "end"]);
   expect(loop.messages).toEqual([{ role: "user", content: "停" }]);
+});
+
+test("有 session 提供方则追加终态消息；没有则纯内存", async () => {
+  const stored: Message[] = [];
+  const withSession = await loadRound(
+    fakeLlm([() => [{ type: "text", text: "好" }]]),
+    fakeTools([]),
+    {
+      messages: stored,
+      append(message) {
+        stored.push(message);
+      },
+    },
+  );
+  await withSession.loop.prompt("嗨");
+  expect(stored).toEqual([
+    { role: "user", content: "嗨" },
+    { role: "assistant", content: [{ type: "text", text: "好" }] },
+  ]);
+  expect(withSession.loop.messages).toEqual(stored);
+
+  const without = await loadRound(fakeLlm([() => [{ type: "text", text: "内存" }]]), fakeTools([]));
+  await without.loop.prompt("嗨");
+  expect(without.loop.messages).toEqual([
+    { role: "user", content: "嗨" },
+    { role: "assistant", content: [{ type: "text", text: "内存" }] },
+  ]);
+  expect(without.host.context.get("session")).toBeUndefined();
+});
+
+test("恢复时工厂吃初始原文列表，Loop 仍是 messages + prompt", async () => {
+  const initial: Message[] = [
+    { role: "user", content: "上次" },
+    { role: "assistant", content: [{ type: "text", text: "记着" }] },
+  ];
+  const stored = [...initial];
+  const llm = fakeLlm([() => [{ type: "text", text: "继续" }]]);
+  const { loop } = await loadRound(llm, fakeTools([]), {
+    messages: stored,
+    append(message) {
+      stored.push(message);
+    },
+  });
+  expect(loop).toEqual(expect.objectContaining({ messages: initial }));
+  expect(Object.keys(loop).sort()).toEqual(["messages", "prompt"].sort());
+  await loop.prompt("下一句");
+  expect(llm.received[0]).toEqual([...initial, { role: "user", content: "下一句" }]);
+  expect(loop.messages).toEqual([
+    ...initial,
+    { role: "user", content: "下一句" },
+    { role: "assistant", content: [{ type: "text", text: "继续" }] },
+  ]);
+});
+
+test("Abort 半截助手不落盘，已写入的 user 终态会追加", async () => {
+  const stored: Message[] = [];
+  const firstDelta = deferred();
+  const llm: Llm = {
+    async *stream({ signal }) {
+      yield { type: "text", text: "半" };
+      firstDelta.resolve();
+      await new Promise<void>((_resolve, reject) => {
+        const onAbort = () => {
+          reject(signal?.reason ?? new DOMException("Aborted", "AbortError"));
+        };
+        if (signal?.aborted) {
+          onAbort();
+          return;
+        }
+        signal?.addEventListener("abort", onAbort, { once: true });
+      });
+    },
+  };
+  const { loop } = await loadRound(llm, fakeTools([]), {
+    messages: stored,
+    append(message) {
+      stored.push(message);
+    },
+  });
+  const controller = new AbortController();
+  const pending = loop.prompt("停", { signal: controller.signal });
+  await firstDelta.promise;
+  controller.abort();
+  await expect(pending).rejects.toSatisfy((error) => error instanceof Error);
+  expect(stored).toEqual([{ role: "user", content: "停" }]);
+  expect(loop.messages).toEqual(stored);
 });
