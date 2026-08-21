@@ -6,7 +6,7 @@ Status: ready-for-agent
 
 ## Problem Statement
 
-作者要在本仓库里做出自己用的 coding CLI agent：在终端里流式改代码、跑命令、搜仓库。能力必须按契约以插件替换，而不是焊进一颗不可拆的循环。现有参考实现要么把循环当成内核，要么把企业能力预埋进核；作者两边都不想 fork，也不想在 v0 做成可嵌入 Runtime 或多智能体平台。
+仓库级目标（[ADR-0008](../../docs/adr/0008-project-goal.md)）是自研极简、高扩展、可插拔的 agent 系统：pi 的极简、Harness 的一切皆插件、AgentScope 2.0 的企业级能力（加槽长出）。本规格只切到 **v0 产品闭环**：自己用的 coding CLI（终端里流式改代码、跑命令、搜仓库）。能力必须按契约以插件替换。不 fork 三家，也不把 v0 做成可嵌入 Runtime 或多智能体平台——那些是目标里的后续阶段，不是本规格的交付。
 
 仓库目前是 TypeScript monorepo 绿场，没有可插拔内核、没有循环插件、没有流式 REPL。缺少一份可交接实现的规格：内核闭合集、插件契约、默认循环合同、v0 产品边界，以及到达 **v0 产品闭环** 的阶段边界。
 
@@ -164,6 +164,7 @@ ADR：
 - [0005 到 v0 产品闭环共六段，其后加槽不排序](../../docs/adr/0005-roadmap-six-phases-to-v0.md)
 - [0006 默认循环插件：三角消息 + 推理块 + 回合机械装置](../../docs/adr/0006-default-loop-plugin-closed-set.md)
 - [0007 宿主运行时选用官方 Cordis](../../docs/adr/0007-cordis-as-host-runtime.md)
+- [0008 项目目标：极简、一切皆插件、企业能力可长出的 agent 系统](../../docs/adr/0008-project-goal.md)
 
 已关决策票：[内核最小闭合集](./issues/04-kernel-minimal-closed-set.md)、[插件契约：可替换面](./issues/05-plugin-contract-replaceable-surface.md)、[v0 Coding CLI 产品边界](./issues/06-v0-coding-cli-product-boundary.md)、[企业能力阶段切分与内核接缝](./issues/07-enterprise-stage-cuts-and-seams.md)、[路线图阶段与退出条件](./issues/08-roadmap-phases-and-exit-criteria.md)、[默认循环插件最小闭合集](./issues/10-default-loop-plugin-closed-set.md)。
 

@@ -8,6 +8,7 @@ Label: `wayfinder:map`
 
 ## Notes
 
+- 仓库级目标见 [ADR-0008](../../docs/adr/0008-project-goal.md) 与根 [README.md](../../README.md)：极简 + 一切皆插件 + 企业能力可长出。本图只切到 v0 规格，不是项目终点。
 - 领域：内核 / 插件契约 / 阶段边界。术语以根目录 `CONTEXT.md` 为准；新词落地时用 domain-modeling 当场改术语表。
 - 每轮决策票默认同时用 grilling 与 domain-modeling；事实票用 research；手感问题再用 prototype。
 - 全程中文。指票用标题，不用裸编号。
@@ -38,6 +39,7 @@ Label: `wayfinder:map`
 - [MCP 工具桥：登记后的工具能被循环调用](./issues/18-mcp-tools-bridge.md) — `atom-mcp` 默认可关，只把 MCP server 的 tools 登记进 `tools` 槽；假 `llm` 经宿主加载面调用并拿到 `toolResult`；不做 resources / prompts / sampling，不依赖默认工具包。
 - [v0 默认装配：一条命令起真实 CLI](./issues/19-v0-default-assembly.md) — `atom-cli` 写死默认插件列表启动宿主 + 真 `llm` + 默认工具包 + 流式 REPL；MCP 桥 `--mcp` 可开、默认关；此票退出即 v0 产品闭环。
 - 宿主运行时选用官方 Cordis（[ADR-0007](../../docs/adr/0007-cordis-as-host-runtime.md)）— `atom-kernel` 薄封装；不 vendor Harness 的 Cordis 分支。
+- 项目目标（[ADR-0008](../../docs/adr/0008-project-goal.md)）— 极简、一切皆插件、企业能力靠加槽长出；v0 只是第一段。
 
 ## Not yet specified
 

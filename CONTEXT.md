@@ -1,6 +1,6 @@
 # Atom Agent
 
-为自己使用的 coding CLI agent 准备的可插拔内核：v0 打赢终端里改代码这件事；能力按契约以插件替换；企业能力只作为后续阶段的接缝存在，不在 v0 出现。
+自研极简、高扩展、可插拔的 agent 系统：pi 的极简、DeepSeek Harness 的一切皆插件、AgentScope 2.0 的企业级能力（靠加槽长出，不预埋进核）。不 fork 三家。v0 先打赢自己用的 coding CLI；可嵌入 Runtime 与多智能体是后续阶段，不是项目终点。
 
 ## Language
 
