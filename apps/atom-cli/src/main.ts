@@ -5,6 +5,7 @@ import type { ResolvedPluginModule } from "atom-kernel";
 import type { Session } from "atom-session";
 import { parseArgv } from "./argv.ts";
 import { assemble } from "./assemble.ts";
+import { userRoot } from "./config.ts";
 import { createLineReader, runRepl } from "./repl.ts";
 
 export async function main(
@@ -25,7 +26,7 @@ export async function main(
     );
   }
   const flags = parseArgv(argv);
-  const lines = createLineReader(stdin);
+  const lines = createLineReader(stdin, { stdout });
   try {
     const assembly = assemble({
       argv,
@@ -47,9 +48,15 @@ export async function main(
     }
     await runRepl({
       plugins: assembly.plugins,
+      llm: assembly.llm,
+      skills: assembly.skills,
+      cwd,
+      userRoot: userRoot(env),
       stdin,
       stdout,
       readLine: () => lines.readLine(),
+      cancelInput: () => lines.cancel(),
+      interrupt: process,
       prompt: interactive ? "> " : undefined,
     });
   } finally {

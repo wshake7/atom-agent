@@ -41,6 +41,7 @@ export interface Assembly {
   readonly plugins: readonly ResolvedPluginModule[];
   /** 本进程可变三标量；薄 llm 插件每次调用读当前值。 */
   readonly llm: LlmCredentials;
+  readonly skills: readonly SkillEntry[];
 }
 
 export function assemble(input: AssembleInput): Assembly {
@@ -71,15 +72,17 @@ export function assemble(input: AssembleInput): Assembly {
     : flags.resume
       ? "latest"
       : "new";
+  const skills = scanSkillCatalog(skillSearchRoots(input.cwd, env));
   return {
     llm,
+    skills,
     plugins: createDefaultPlugins({
       llm,
       tools,
       mcpServers: stacked.mcpServers,
       toolAllow: stacked.toolAllow,
       toolDeny: stacked.toolDeny,
-      skills: scanSkillCatalog(skillSearchRoots(input.cwd, env)),
+      skills,
       session: {
         root: userRoot(env),
         cwd: input.cwd,

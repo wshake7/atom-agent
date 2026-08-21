@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { parseEnv } from "node:util";
@@ -219,6 +219,61 @@ function readSettings(path: string, kind: "user" | "project" | "local"): Setting
     toolAllow: optionalStringArray(tools?.allow, `${path} tools.allow`),
     toolDeny: optionalStringArray(tools?.deny, `${path} tools.deny`),
   };
+}
+
+export interface UserModelFields {
+  readonly default?: string;
+  readonly forceDefault?: string;
+}
+
+export function readUserModelFields(home: string): UserModelFields {
+  const rec = readSettingsRecord(join(home, "settings.json"));
+  if (!rec) {
+    return {};
+  }
+  if (typeof rec.model === "string") {
+    return { default: readString(rec.model) };
+  }
+  const model = asRecord(rec.model);
+  if (!model) {
+    return {};
+  }
+  return {
+    default: readString(model.default),
+    forceDefault: readString(model.forceDefault),
+  };
+}
+
+export function patchUserModel(
+  home: string,
+  patch: { default?: string; forceDefault?: string | null },
+): UserModelFields {
+  const path = join(home, "settings.json");
+  const rec = readSettingsRecord(path) ?? {};
+  const current: Record<string, unknown> =
+    typeof rec.model === "string" ? { default: rec.model } : { ...asRecord(rec.model) };
+  if (patch.default !== undefined) {
+    current.default = patch.default;
+  }
+  if (patch.forceDefault === null) {
+    delete current.forceDefault;
+  } else if (patch.forceDefault !== undefined) {
+    current.forceDefault = patch.forceDefault;
+  }
+  rec.model = current;
+  writeFileSync(path, `${JSON.stringify(rec, null, 2)}\n`);
+  return {
+    default: readString(current.default),
+    forceDefault: readString(current.forceDefault),
+  };
+}
+
+function readSettingsRecord(path: string): Record<string, unknown> | undefined {
+  const json = readJson(path);
+  if (json === missingJson) {
+    return undefined;
+  }
+  return asRecord(json);
 }
 
 function readUserModel(raw: unknown): string | undefined {

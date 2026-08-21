@@ -69,8 +69,8 @@ test("人输入一轮后终端按总线增量出现助手流式输出", async ()
   });
 
   await firstSeen.promise;
-  expect(text()).toBe("你");
-  expect(text()).not.toContain("暗");
+  expect(text()).toContain("暗");
+  expect(text()).toContain("你");
   expect(text()).not.toContain("好");
 
   secondChunk.resolve([{ type: "text", text: "好" }]);
@@ -112,6 +112,7 @@ test("工具起止来自总线最小事件集并写到终端", async () => {
   });
 
   expect(text()).toContain("[工具开始] echo");
+  expect(text()).toContain(JSON.stringify({ text: "hi" }));
   expect(text()).toContain("[工具结束] echo");
   expect(text()).toContain("好了");
 });
