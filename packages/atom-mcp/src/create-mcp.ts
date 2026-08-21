@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 export interface McpStdioServer {
+  readonly name?: string;
   readonly command: string;
   readonly args?: readonly string[];
   readonly env?: Readonly<Record<string, string>>;
@@ -49,7 +50,7 @@ export async function connectMcpTools(servers: readonly McpStdioServer[]): Promi
     for (const server of servers) {
       const client = await connectServer(server);
       clients.push(client);
-      tools.push(...(await listServerTools(client)));
+      tools.push(...(await listServerTools(client, server.name)));
     }
     return {
       tools,
@@ -73,14 +74,14 @@ async function connectServer(server: McpStdioServer): Promise<Client> {
   return client;
 }
 
-async function listServerTools(client: Client): Promise<Tool[]> {
+async function listServerTools(client: Client, serverName?: string): Promise<Tool[]> {
   const tools: Tool[] = [];
   let cursor: string | undefined;
   do {
     const page = await client.listTools(cursor ? { cursor } : undefined);
     for (const tool of page.tools) {
       tools.push({
-        name: tool.name,
+        name: serverName ? `mcp__${serverName}__${tool.name}` : tool.name,
         description: tool.description,
         parameters: tool.inputSchema,
         execute(args, signal) {

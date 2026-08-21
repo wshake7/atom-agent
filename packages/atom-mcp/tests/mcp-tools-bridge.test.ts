@@ -59,6 +59,20 @@ test("默认 MCP 桥关闭，不登记工具", async () => {
   expect(host.context.get("sampling")).toBeUndefined();
 });
 
+test("有 name 的 server 把工具登记为 mcp__<server>__<tool>", async () => {
+  const llm = fakeLlm([]);
+  const { host, loadedMcp } = await loadWithMcp(
+    llm,
+    createMcpPlugin({ servers: [{ name: "echo", ...echoServer }] }),
+  );
+  try {
+    const tools = host.context.get("tools") as ToolsSlot;
+    expect(tools.list().map((tool) => tool.name)).toEqual(["mcp__echo__echo"]);
+  } finally {
+    await loadedMcp.unload();
+  }
+});
+
 test("接上 MCP server 后其 tools 进入 tools 槽，循环能调用并拿到 toolResult", async () => {
   const llm = fakeLlm([
     () => [{ type: "toolCall", id: "e", name: "echo", arguments: { text: "pong" } }],

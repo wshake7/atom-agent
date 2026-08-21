@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable, Writable } from "node:stream";
@@ -198,8 +198,26 @@ test("ASK 在 REPL 里提问并收下下一行作为答复", async () => {
 });
 
 test("main 用默认装配启动，空输入即退出", async () => {
+  const root = await mkdtemp(join(tmpdir(), "atom-cli-main-"));
+  const home = join(root, "home");
+  await mkdir(home, { recursive: true });
+  await writeFile(
+    join(home, "settings.json"),
+    JSON.stringify({
+      model: "m",
+      baseUrl: "https://example.test",
+      apiKey: "k",
+    }),
+  );
   const { stdout } = memoryStdout();
-  await main([], Readable.from([]), stdout);
+  try {
+    await main([], Readable.from([]), stdout, {
+      cwd: root,
+      env: { ATOM_AGENT_HOME: home },
+    });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("main 拒绝未知参数", async () => {
