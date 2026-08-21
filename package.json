@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare": "lefthook install",
     "ready": "vp check && vp run -r test && vp run -r build",
     "lint:full": "vp check",
     "format:full": "vp check --fix",
