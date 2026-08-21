@@ -14,15 +14,9 @@ catalog:
   vite: npm:@voidzero-dev/vite-plus-core@latest
   vitest: 4.1.9
   vite-plus: latest
-  "@types/jsonwebtoken": latest
-  h3: latest
-  "@faker-js/faker": latest
-  jsonwebtoken: latest
-  nitropack: latest
   cspell: latest
   commitlint: latest
   "@commitlint/config-conventional": latest
-  altcha-lib: 2.3.1
 overrides:
   vite: "catalog:"
   vitest: "catalog:"

@@ -17,7 +17,6 @@ pre-commit:
 
     - name: cspell:staged
       glob:
-        - "apps/backend-mock-template/**/*.{ts,tsx}"
         - "*.md"
         - "*.yml"
       # 只扫本次暂存命中文件;--no-must-find-files 避免空列表时 cspell 非 0。

@@ -7,7 +7,6 @@
     "ready": "vp check && vp run -r test && vp run -r build",
     "lint:full": "vp check",
     "format:full": "vp check --fix",
-    "dev:mock": "vp run backend-mock-template#start",
     "atom": "node apps/atom-cli/src/cli.ts"
   },
   "devDependencies": {
