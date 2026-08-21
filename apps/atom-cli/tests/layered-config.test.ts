@@ -107,7 +107,7 @@ test("用户层 settings 叠出三标量，宿主只吃已解析模块", async (
   try {
     const assembly = assembleFrom(tree);
     expect(assembly.llm).toEqual(userLlm);
-    expect(assembly.plugins.map((plugin) => plugin.id)).toEqual([
+    const pluginIds = [
       "atom-llm",
       "atom-tools",
       "atom-skill",
@@ -115,7 +115,15 @@ test("用户层 settings 叠出三标量，宿主只吃已解析模块", async (
       "atom-session",
       "atom-compact",
       "atom-loop",
-    ]);
+    ];
+    expect(assembly.plugins.map((plugin) => plugin.id)).toEqual(pluginIds);
+    const llmSlot = assembly.llm;
+    llmSlot.model = "session-model";
+    expect(assembly.llm).toBe(llmSlot);
+    expect(assembly.llm.model).toBe("session-model");
+    expect(assembly.llm.baseUrl).toBe(userLlm.baseUrl);
+    expect(assembly.llm.apiKey).toBe(userLlm.apiKey);
+    expect(assembly.plugins.map((plugin) => plugin.id)).toEqual(pluginIds);
     const { host, close } = await loadHost(assembly.plugins);
     try {
       expect(host.context.get("llm")).toBeDefined();

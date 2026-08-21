@@ -40,10 +40,10 @@ test("工作区包名都以 atom- 为前缀", () => {
   }
 });
 
-test("依赖方向：内核独立，插件只依赖内核，CLI 依赖内核与插件", () => {
+test("依赖方向：内核独立，兼容库不进 CLI / 循环，薄 llm 才依赖它", () => {
   expect(atomWorkspaceDeps(kernelPkg)).toEqual([]);
   expect(atomWorkspaceDeps(loopPkg)).toEqual(["atom-kernel"]);
-  expect(atomWorkspaceDeps(llmPkg)).toEqual(["atom-kernel"]);
+  expect(atomWorkspaceDeps(llmPkg)).toEqual(["atom-kernel", "atom-openai-compat"]);
   expect(atomWorkspaceDeps(toolsPkg)).toEqual(["atom-kernel"]);
   expect(atomWorkspaceDeps(mcpPkg)).toEqual(["atom-kernel"]);
   expect(atomWorkspaceDeps(sessionPkg)).toEqual(["atom-kernel"]);
@@ -59,4 +59,6 @@ test("依赖方向：内核独立，插件只依赖内核，CLI 依赖内核与�
     "atom-skill",
     "atom-tools",
   ]);
+  expect(atomWorkspaceDeps(cliPkg)).not.toContain("atom-openai-compat");
+  expect(atomWorkspaceDeps(loopPkg)).not.toContain("atom-openai-compat");
 });

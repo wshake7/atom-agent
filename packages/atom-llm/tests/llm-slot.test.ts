@@ -52,10 +52,31 @@ async function drain(req: NodeJS.ReadableStream) {
   }
 }
 
-async function serveChatCompletions(write: (res: NodeJS.WritableStream) => Promise<void> | void) {
+async function collect(llm: Llm, text: string) {
+  const chunks: unknown[] = [];
+  for await (const chunk of llm.stream({
+    messages: [{ role: "user", content: text }],
+    tools: [],
+  })) {
+    chunks.push(chunk);
+  }
+  return chunks;
+}
+
+async function serveChatCompletions(
+  write: (res: NodeJS.WritableStream) => Promise<void> | void,
+  onBody?: (body: unknown) => void,
+) {
   const server = createServer((req, res) => {
     void (async () => {
-      await drain(req);
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+      }
+      const raw = Buffer.concat(chunks).toString("utf8");
+      if (raw.length > 0) {
+        onBody?.(JSON.parse(raw) as unknown);
+      }
       if (req.method !== "POST" || req.url !== "/chat/completions") {
         res.statusCode = 404;
         res.end();
@@ -126,6 +147,61 @@ test("提供商上下文溢出被译成可识别失败面，不加方法", async
         resolve();
       });
     });
+  }
+});
+
+test("薄插件只信 options，不回落到 process.env", async () => {
+  const previous = process.env.ATOM_LLM_API_KEY;
+  process.env.ATOM_LLM_API_KEY = "from-env";
+  try {
+    const host = createPluginHost();
+    await host.load(
+      createLlmPlugin({
+        baseUrl: "http://127.0.0.1:9",
+        model: "dummy",
+      }),
+    );
+    const llm = host.context.get("llm") as Llm;
+    await expect(async () => {
+      for await (const _chunk of llm.stream({
+        messages: [{ role: "user", content: "嗨" }],
+        tools: [],
+      })) {
+        /* 只要失败面 */
+      }
+    }).rejects.toThrow("llm 插件未配置 apiKey、baseUrl 或 model");
+  } finally {
+    if (previous === undefined) {
+      delete process.env.ATOM_LLM_API_KEY;
+    } else {
+      process.env.ATOM_LLM_API_KEY = previous;
+    }
+  }
+});
+
+test("每次调用读当前三标量，改 model 不换 llm 槽", async () => {
+  const models: string[] = [];
+  const credentials = { apiKey: "test-key", baseUrl: "", model: "first" };
+  const server = await serveChatCompletions(
+    (res) => {
+      res.write(sseDelta("ok"));
+      res.write("data: [DONE]\n\n");
+    },
+    (body) => {
+      models.push((body as { model?: string }).model ?? "");
+    },
+  );
+  credentials.baseUrl = server.origin;
+  try {
+    const { host, llm } = await loadLlm(credentials);
+    const same = host.context.get("llm");
+    await collect(llm, "一");
+    credentials.model = "second";
+    await collect(llm, "二");
+    expect(host.context.get("llm")).toBe(same);
+    expect(models).toEqual(["first", "second"]);
+  } finally {
+    await server.close();
   }
 });
 
@@ -256,7 +332,7 @@ test("Abort 能中止进行中的 llm 调用", async () => {
   }
 });
 
-test("默认循环消费 llm 槽上的适配器即可完成一轮流式回合", async () => {
+test("默认循环消费 llm 槽即可完成一轮流式回合", async () => {
   const server = await serveChatCompletions((res) => {
     res.write(sseDelta("你"));
     res.write(sseDelta("好"));
@@ -298,7 +374,7 @@ test("默认循环消费 llm 槽上的适配器即可完成一轮流式回合", 
   }
 });
 
-test("经默认循环 Abort 能中止进行中的真实适配器调用", async () => {
+test("经默认循环 Abort 能中止进行中的 llm 调用", async () => {
   const firstWritten = deferred();
   const release = deferred();
   const server = await serveChatCompletions(async (res) => {
@@ -333,10 +409,16 @@ test("经默认循环 Abort 能中止进行中的真实适配器调用", async (
 });
 
 test.skipIf(!liveReady)(
-  "有密钥时默认循环经适配器完成一次真实模型调用",
+  "有密钥时默认循环经薄插件完成一次真实或录制的模型调用",
   async () => {
     const host = createPluginHost();
-    await host.load(plugin);
+    await host.load(
+      createLlmPlugin({
+        apiKey: process.env.ATOM_LLM_API_KEY ?? "",
+        baseUrl: process.env.ATOM_LLM_BASE_URL ?? "",
+        model: process.env.ATOM_LLM_MODEL ?? "",
+      }),
+    );
     const loop = await loadLoop(host);
     const deltas: unknown[] = [];
     host.events.subscribe(LOOP_EVENTS.assistantDelta, (payload) => {

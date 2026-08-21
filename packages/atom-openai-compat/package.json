@@ -1,8 +1,8 @@
 {
-  "name": "atom-llm",
+  "name": "atom-openai-compat",
   "version": "0.0.0",
   "private": true,
-  "description": "薄 llm 插件：把槽形状译成兼容面",
+  "description": "OpenAI 兼容 chat/completions 流式 SSE 客户端库",
   "license": "MIT",
   "type": "module",
   "exports": {
@@ -14,10 +14,6 @@
     "dev": "vp pack --watch",
     "test": "vp test",
     "check": "vp check"
-  },
-  "dependencies": {
-    "atom-kernel": "workspace:*",
-    "atom-openai-compat": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

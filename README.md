@@ -30,19 +30,20 @@ atom-cli（流式 REPL + 默认装配）
     │
     ▼
 atom-kernel（插件宿主）
-    ├── llm    ← atom-llm（OpenAI 兼容 /chat/completions 流式适配）
+    ├── llm    ← atom-llm（薄插件，方言在 atom-openai-compat）
     ├── tools  ← atom-tools（默认 coding 工具）+ atom-mcp（可选工具桥）
     └── loop   ← atom-loop（一轮「模型 ↔ 工具」直到助手不再调工具或被 Abort）
 ```
 
-| 包                     | 职责                                                                                    |
-| ---------------------- | --------------------------------------------------------------------------------------- |
-| `packages/atom-kernel` | 进程内插件宿主：加载已解析同进程模块、Context 取槽、匿名事件                            |
-| `packages/atom-loop`   | 默认循环插件：三角消息（`user` / `assistant` / `toolResult`）、推理块回放、串行工具分发 |
-| `packages/atom-llm`    | 默认 `llm` 适配器：流式、可 Abort；提供商方言不进槽合同                                 |
-| `packages/atom-tools`  | 默认 `tools` 插件：工作树读写、编辑、shell、ripgrep、ASK                                |
-| `packages/atom-mcp`    | MCP stdio 工具桥：把远端 tools 登记进已有 `tools` 槽                                    |
-| `apps/atom-cli`        | 流式 REPL 与默认装配入口                                                                |
+| 包                            | 职责                                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------------------- |
+| `packages/atom-kernel`        | 进程内插件宿主：加载已解析同进程模块、Context 取槽、匿名事件                            |
+| `packages/atom-loop`          | 默认循环插件：三角消息（`user` / `assistant` / `toolResult`）、推理块回放、串行工具分发 |
+| `packages/atom-llm`           | 薄 `llm` 插件：槽形状 ↔ 兼容面翻译；每次调用读装配里的当前三标量                        |
+| `packages/atom-openai-compat` | OpenAI 兼容 `{baseUrl}/chat/completions` 流式 SSE 客户端库；不是插件、不占槽            |
+| `packages/atom-tools`         | 默认 `tools` 插件：工作树读写、编辑、shell、ripgrep、ASK                                |
+| `packages/atom-mcp`           | MCP stdio 工具桥：把远端 tools 登记进已有 `tools` 槽                                    |
+| `apps/atom-cli`               | 流式 REPL 与默认装配入口                                                                |
 
 决策记录在 [`docs/adr/`](docs/adr/)。领域用语见 [`CONTEXT.md`](CONTEXT.md)。
 
@@ -58,7 +59,7 @@ atom-kernel（插件宿主）
 vp i
 ```
 
-复制环境变量并填写 OpenAI 兼容端点（适配器请求 `{baseUrl}/chat/completions`）：
+复制环境变量并填写 OpenAI 兼容端点（兼容库请求 `{baseUrl}/chat/completions`）：
 
 ```bash
 cp .env.example .env
@@ -133,7 +134,8 @@ const loop = host.context.get("loop");
 apps/atom-cli/          # 流式 REPL
 packages/atom-kernel/   # 插件宿主
 packages/atom-loop/     # 默认循环
-packages/atom-llm/      # 默认模型端口
+packages/atom-llm/      # 薄 llm 插件
+packages/atom-openai-compat/ # OpenAI 兼容库
 packages/atom-tools/    # 默认工具包
 packages/atom-mcp/      # MCP 工具桥
 packages/atom-session/  # 会话日志

@@ -31,13 +31,16 @@ export interface AssembleInput {
   readonly tools?: boolean | ToolsPluginOptions;
 }
 
+export interface LlmCredentials {
+  model: string;
+  baseUrl: string;
+  apiKey: string;
+}
+
 export interface Assembly {
   readonly plugins: readonly ResolvedPluginModule[];
-  readonly llm: {
-    readonly model: string;
-    readonly baseUrl: string;
-    readonly apiKey: string;
-  };
+  /** 本进程可变三标量；薄 llm 插件每次调用读当前值。 */
+  readonly llm: LlmCredentials;
 }
 
 export function assemble(input: AssembleInput): Assembly {
