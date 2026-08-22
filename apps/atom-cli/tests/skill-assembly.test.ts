@@ -252,7 +252,7 @@ test("deny 工具名 skill 时加载器整把不登记", async () => {
         "edit",
         "bash",
         "rg",
-        "ASK",
+        "ask",
       ]);
     } finally {
       await close();

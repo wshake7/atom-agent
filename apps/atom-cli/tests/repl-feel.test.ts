@@ -285,7 +285,7 @@ test("listSkills 近 cwd 为 local，同名 user 为 overridden", async () => {
   }
 });
 
-test("ASK 里的斜杠当正文，主提示斜杠才拦截", async () => {
+test("ask 里的斜杠当正文，主提示斜杠才拦截", async () => {
   const { stdout, text } = memoryStdout();
   const lines = createLineReader(
     Readable.from(["问我\n", "/still-body\n", "/exit\n"], { encoding: "utf8" }),
@@ -299,7 +299,7 @@ test("ASK 里的斜杠当正文，主提示斜杠才拦截", async () => {
             yield {
               type: "toolCall",
               id: "a",
-              name: "ASK",
+              name: "ask",
               arguments: { question: "文件名是什么？" },
             };
             return;
@@ -329,7 +329,7 @@ test("ASK 里的斜杠当正文，主提示斜杠才拦截", async () => {
   }
 });
 
-test("粘贴多行合成一条再交给循环；ASK 同一套提交单位", async () => {
+test("粘贴多行合成一条再交给循环；ask 同一套提交单位", async () => {
   const prompts: string[] = [];
   const { stdout, text } = memoryStdout();
   const paste = "\x1b[200~alpha\nbeta\x1b[201~\n";
@@ -350,7 +350,7 @@ test("粘贴多行合成一条再交给循环；ASK 同一套提交单位", asyn
             yield {
               type: "toolCall",
               id: "a",
-              name: "ASK",
+              name: "ask",
               arguments: { question: "多行？" },
             };
             return;
@@ -383,7 +383,7 @@ test("粘贴多行合成一条再交给循环；ASK 同一套提交单位", asyn
   }
 });
 
-test("输入历史只存空闲主提示原始行，不含 ASK，不含 Skill 展开正文", async () => {
+test("输入历史只存空闲主提示原始行，不含 ask，不含 Skill 展开正文", async () => {
   const prompts: string[] = [];
   const { stdout, text } = memoryStdout();
   const lines = createLineReader(
@@ -405,7 +405,7 @@ test("输入历史只存空闲主提示原始行，不含 ASK，不含 Skill 展
             yield {
               type: "toolCall",
               id: "a",
-              name: "ASK",
+              name: "ask",
               arguments: { question: "秘密？" },
             };
             return;

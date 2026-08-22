@@ -77,7 +77,11 @@ test("无工具时默认模板只留身份，cwd 始终在最后", () => {
 test("有工具时默认模板是身份、工具表、guidelines；MCP 无摘要", () => {
   const text = composeSystemPrompt({
     files: { system: undefined, appends: [], agents: [] },
-    tools: [{ name: "read" }, { name: "mcp__foo__bar" }, { name: "skill" }],
+    tools: [
+      { name: "read", description: "Read file contents" },
+      { name: "mcp__foo__bar" },
+      { name: "skill", description: "Load a skill's instructions by name" },
+    ],
     skills: [],
     cwd: "/tmp/work",
   });

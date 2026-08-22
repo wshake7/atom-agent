@@ -63,7 +63,7 @@ test("默认装配占官方槽：循环、真 llm 模块、默认工具包；MCP
     "edit",
     "bash",
     "rg",
-    "ASK",
+    "ask",
     "skill",
   ]);
   expect(tools?.list().find((tool) => tool.name === "skill")?.description).toContain(
@@ -98,7 +98,7 @@ test("打开 MCP 桥后其 tools 与默认工具包同在 tools 槽", async () =
     "edit",
     "bash",
     "rg",
-    "ASK",
+    "ask",
     "skill",
     "echo",
   ]);
@@ -169,7 +169,7 @@ test("打开 MCP 后同一 REPL 回合能调用登记的工具", async () => {
   expect(text()).toContain("回声到了");
 });
 
-test("ASK 在 REPL 里提问并收下下一行作为答复", async () => {
+test("ask 在 REPL 里提问并收下下一行作为答复", async () => {
   const { stdout, text } = memoryStdout();
   const lines = createLineReader(Readable.from(["问我\n", "note.txt\n"], { encoding: "utf8" }));
   try {
@@ -181,7 +181,7 @@ test("ASK 在 REPL 里提问并收下下一行作为答复", async () => {
             yield {
               type: "toolCall",
               id: "a",
-              name: "ASK",
+              name: "ask",
               arguments: { question: "文件名是什么？" },
             };
             return;

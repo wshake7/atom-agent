@@ -55,7 +55,7 @@ test("默认工具包不登记 skill", async () => {
     "edit",
     "bash",
     "rg",
-    "ASK",
+    "ask",
   ]);
 });
 
@@ -140,7 +140,7 @@ test("rg 使用随包二进制，不依赖系统 PATH 上的 rg", async () => {
   }
 });
 
-test("ASK 能提问并收下答复作为 toolResult，且不拦截 write 或 bash", async () => {
+test("ask 能提问并收下答复作为 toolResult，且不拦截 write 或 bash", async () => {
   const root = await mkdtemp(join(tmpdir(), "atom-tools-ask-"));
   const asked: string[] = [];
   try {
@@ -154,7 +154,7 @@ test("ASK 能提问并收下答复作为 toolResult，且不拦截 write 或 bas
         },
         { type: "toolCall", id: "b", name: "bash", arguments: { command: "printf ran" } },
       ],
-      () => [{ type: "toolCall", id: "a", name: "ASK", arguments: { question: "文件名是什么？" } }],
+      () => [{ type: "toolCall", id: "a", name: "ask", arguments: { question: "文件名是什么？" } }],
       () => [{ type: "text", text: "收到" }],
     ]);
     const { loop } = await loadRound(
@@ -174,10 +174,10 @@ test("ASK 能提问并收下答复作为 toolResult，且不拦截 write 或 bas
     expect(await readFile(join(root, "x.txt"), "utf8")).toBe("ok");
     const results = loop.messages.filter((message) => message.role === "toolResult");
     expect(results.find((message) => message.name === "bash")?.content).toContain("ran");
-    expect(results.find((message) => message.name === "ASK")).toEqual({
+    expect(results.find((message) => message.name === "ask")).toEqual({
       role: "toolResult",
       toolCallId: "a",
-      name: "ASK",
+      name: "ask",
       content: "note.txt",
       isError: false,
     });
@@ -187,7 +187,7 @@ test("ASK 能提问并收下答复作为 toolResult，且不拦截 write 或 bas
 });
 
 test("整包可关：不装或卸载后循环看不到这些工具", async () => {
-  const names = ["read", "write", "edit", "bash", "rg", "ASK"];
+  const names = ["read", "write", "edit", "bash", "rg", "ask"];
   const hostWithTools = createPluginHost();
   const loaded = await hostWithTools.load(createToolsPlugin());
   const listed = hostWithTools.context.get("tools") as { list(): { name: string }[] } | undefined;

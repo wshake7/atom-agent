@@ -128,7 +128,7 @@ test("用户层 settings 叠出三标量，宿主只吃已解析模块", async (
     try {
       expect(host.context.get("llm")).toBeDefined();
       expect(host.context.get("loop")).toBeDefined();
-      expect(toolNames(host)).toEqual(["read", "write", "edit", "bash", "rg", "ASK", "skill"]);
+      expect(toolNames(host)).toEqual(["read", "write", "edit", "bash", "rg", "ask", "skill"]);
       expect(host.context.get("config")).toBeUndefined();
     } finally {
       await close();
@@ -402,7 +402,7 @@ test("工具 deny 跨层并集，allow 以最高层整表替换", async () => {
       tools: { deny: ["bash"] },
     });
     await writeJson(join(tree.repo, ".atom-agent", "settings.json"), {
-      tools: { deny: ["ASK"], allow: ["read", "write", "edit", "rg", "ASK"] },
+      tools: { deny: ["ask"], allow: ["read", "write", "edit", "rg", "ask"] },
     });
     const { host, close } = await loadHost(assembleFrom(tree).plugins);
     try {

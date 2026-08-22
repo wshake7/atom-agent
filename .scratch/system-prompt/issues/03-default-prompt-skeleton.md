@@ -54,7 +54,7 @@ Available tools:
 | edit | Make precise edits in existing files |
 | bash | Execute shell commands |
 | rg | Search file contents or list files by glob |
-| ASK | Ask the user a question and wait |
+| ask | Ask the user a question and wait |
 | skill | Load a skill's instructions by name |
 
 guidelines（固定英文，不算按工具收集；无工具则省略）：

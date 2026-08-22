@@ -15,7 +15,7 @@
 ## 它做什么
 
 - 交互式流式 REPL：你输入一行，模型 ↔ 工具回合跑完再等下一行。
-- 默认工具包：`read` / `write` / `edit` / `bash` / `rg`，以及问答用 `ASK`（模型提问、REPL 答复，不是权限确认）。
+- 默认工具包：`read` / `write` / `edit` / `bash` / `rg`，以及问答用 `ask`（模型提问、REPL 答复，不是权限确认）。
 - Skill：按目录放下 `<name>/SKILL.md` 即可进清单；模型用 `skill({ name })` 按需取正文。
 - MCP 只作工具桥：把 stdio MCP server 的 tools 登记进 `tools` 槽，不做 resources / prompts / sampling。
 - 能力按契约替换：官方槽 `loop`、`tools`、`llm`、`compact`、`session`，可加不可改。
@@ -44,7 +44,7 @@ atom-kernel（插件宿主）
 | `packages/atom-loop`          | 默认循环插件：三角消息（`user` / `assistant` / `toolResult`）、推理块回放、串行工具分发 |
 | `packages/atom-llm`           | 薄 `llm` 插件：槽形状 ↔ 兼容面翻译；每次调用读装配里的当前三标量                        |
 | `packages/atom-openai-compat` | OpenAI 兼容 `{baseUrl}/chat/completions` 流式 SSE 客户端库；不是插件、不占槽            |
-| `packages/atom-tools`         | 默认 `tools` 插件：工作树读写、编辑、shell、ripgrep、ASK                                |
+| `packages/atom-tools`         | 默认 `tools` 插件：工作树读写、编辑、shell、ripgrep、ask                                |
 | `packages/atom-mcp`           | MCP stdio 工具桥：把远端 tools 登记进已有 `tools` 槽                                    |
 | `packages/atom-skill`         | Skill 加载器：扫 `SKILL.md`，往 `tools` 登记一把 `skill({ name })`                      |
 | `packages/atom-session`       | 会话日志                                                                                |
@@ -105,11 +105,11 @@ node apps/atom-cli/src/cli.ts --sessions
 - `--mcp` 及其后参数视为一个 stdio MCP server 的 command + args，该 server 的 tools 会登记进 `tools` 槽。
 - 裸启动永远是新会话。`--resume` 打开当前 cwd 最近一次；`--session <id>` 按 id 打开；`--sessions` 列出后退出。
 
-REPL 会订阅循环事件：助手文本流式写出；工具调用打印 `[工具开始]` / `[工具结束]`；`ASK` 打印 `[问] …` 并读下一行作为答复。
+REPL 会订阅循环事件：助手文本流式写出；工具调用打印 `[工具开始]` / `[工具结束]`；`ask` 打印 `[问] …` 并读下一行作为答复。
 
 ### 斜杠命令
 
-只在空闲主提示、交给循环之前拦截。`ASK` 答复里的 `/…` 当正文。`/help` 打印本表。
+只在空闲主提示、交给循环之前拦截。`ask` 答复里的 `/…` 当正文。`/help` 打印本表。
 
 | 命令            | 行为                                                                                                                                                               |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

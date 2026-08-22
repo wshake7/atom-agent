@@ -12,16 +12,6 @@ const GUIDELINES = `Guidelines:
 - Show file paths clearly when working with files.
 - Be concise.`;
 
-const TOOL_SUMMARIES: Record<string, string> = {
-  read: "Read file contents",
-  write: "Create or overwrite files",
-  edit: "Make precise edits in existing files",
-  bash: "Execute shell commands",
-  rg: "Search file contents or list files by glob",
-  ASK: "Ask the user a question and wait",
-  skill: "Load a skill's instructions by name",
-};
-
 export interface PromptAgentFile {
   readonly path: string;
   readonly body: string;
@@ -35,6 +25,7 @@ export interface PromptFileBundle {
 
 export interface PromptTool {
   readonly name: string;
+  readonly description?: string;
 }
 
 export interface PromptSkill {
@@ -148,10 +139,9 @@ function defaultTemplate(tools: readonly PromptTool[]): string {
   }
   const lines = [
     "Available tools:",
-    ...tools.map((tool) => {
-      const summary = TOOL_SUMMARIES[tool.name];
-      return summary ? `- ${tool.name}: ${summary}` : `- ${tool.name}`;
-    }),
+    ...tools.map((tool) =>
+      tool.description ? `- ${tool.name}: ${tool.description}` : `- ${tool.name}`,
+    ),
   ];
   return [IDENTITY, lines.join("\n"), GUIDELINES].join("\n\n");
 }

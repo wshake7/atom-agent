@@ -24,7 +24,9 @@ export interface DefaultAssemblyOptions {
   readonly toolDeny?: readonly string[];
   readonly skills?: SkillCatalog;
   readonly session?: boolean | SessionPluginOptions;
-  readonly getSystemPrompt?: (input: { tools: readonly { name: string }[] }) => string | undefined;
+  readonly getSystemPrompt?: (input: {
+    tools: readonly { name: string; description?: string }[];
+  }) => string | undefined;
 }
 
 export interface AssembleInput {

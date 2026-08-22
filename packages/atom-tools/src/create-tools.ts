@@ -24,7 +24,7 @@ export function createTools(options: ToolsPluginOptions = {}): Tools {
   const tools: Tool[] = [
     {
       name: "read",
-      description: "Read file contents from the working tree",
+      description: "Read file contents",
       parameters: objectSchema({ path: { type: "string" } }, ["path"]),
       execute(args) {
         return readTool(cwd, stringField(args, "path"));
@@ -32,7 +32,7 @@ export function createTools(options: ToolsPluginOptions = {}): Tools {
     },
     {
       name: "write",
-      description: "Create or overwrite files in the working tree",
+      description: "Create or overwrite files",
       parameters: objectSchema({ path: { type: "string" }, content: { type: "string" } }, [
         "path",
         "content",
@@ -43,7 +43,7 @@ export function createTools(options: ToolsPluginOptions = {}): Tools {
     },
     {
       name: "edit",
-      description: "Make a unique-string replacement in an existing file",
+      description: "Make precise edits in existing files",
       parameters: objectSchema(
         {
           path: { type: "string" },
@@ -63,7 +63,7 @@ export function createTools(options: ToolsPluginOptions = {}): Tools {
     },
     {
       name: "bash",
-      description: "Execute a shell command in the working tree",
+      description: "Execute shell commands",
       parameters: objectSchema({ command: { type: "string" } }, ["command"]),
       execute(args, signal) {
         return bashTool(cwd, stringField(args, "command"), signal);
@@ -71,7 +71,7 @@ export function createTools(options: ToolsPluginOptions = {}): Tools {
     },
     {
       name: "rg",
-      description: "Search file contents with ripgrep, or list files by glob",
+      description: "Search file contents or list files by glob",
       parameters: objectSchema(
         {
           pattern: { type: "string" },
@@ -95,9 +95,8 @@ export function createTools(options: ToolsPluginOptions = {}): Tools {
       },
     },
     {
-      name: "ASK",
-      description:
-        "Ask the user a question and wait for the reply. Does not intercept write or bash.",
+      name: "ask",
+      description: "Ask the user a question and wait",
       parameters: objectSchema({ question: { type: "string" } }, ["question"]),
       async execute(args, signal) {
         const question = stringField(args, "question");
